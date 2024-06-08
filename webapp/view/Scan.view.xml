@@ -1,0 +1,51 @@
+<mvc:View controllerName="ventilado.ventilado.controller.Scan"
+    xmlns:mvc="sap.ui.core.mvc" displayBlock="true"
+    xmlns="sap.m"
+    xmlns:m="sap.m">
+    
+    <Page title="Scaneamos todos los productos y los colocamos en la cubeta que corresponda.">
+        <FlexBox >
+     
+        <VBox class="fullHeight" justifyContent="Start">
+            <HBox class="header noScroll">
+                <Button text="START" type="Reject" press="onStartPress" enabled="{=!${/isStarted}}" />
+                <Button id="stop" text="STOP" type="Reject" press="onStopDialog" visible="{/isStarted}" icon="sap-icon://flag" />
+                <Text text="Estación de trabajo: 3"  class="blackBackground"/>
+                <Text text="Reparto: 399598"  class="blackBackground"/>
+                <Button text="Print Etiquetas" press="onGeneratePDF" icon="sap-icon://print"/>
+                <Button text="CRUD Crear" press="onCrudCrear"/>
+                <Button text="CRUD Act" press="onCrudUpdate"/>
+                <Button text="CRUD Read" press="onCrudRead"/>
+                <Button text="CRUD Borrar" press="onCrudBorrar"/>
+            </HBox>
+            
+            <HBox class="inputSection">
+                <Label id="lEan" text="EAN" class="label"/>
+                <Input id="eanInput"  enabled="{/isStarted}" class="inputEan" submit="onEanInputSubmit" />   
+                <Button id="btCi2" enabled="{/isStarted}" text="COD. INTERNO" type="Reject" press="onOpenCodeInputDialog" class="button"/>
+                <Label id="edtCI" text="" class="inputCodigoIntern" width="100px"/>
+                
+                <Label id="lDescripcion" text="" class="inputDescripcion"/>
+                
+            </HBox>  
+             
+            <HBox class="spSection">
+                <VBox class="spBox ">
+                <HBox  class="spSection"> 
+                    <Label id="lbCantidad" text="CANTIDAD" visible="{/isArrowVisible}" class="inputDescripcion"/>
+                    <Button id="btParcial1" visible="{/isArrowVisible}" text="PARCIAL" type="Reject" press="onPessParcialDialog" class="button"/>
+                </HBox>
+                    <Text id= "txtCantidad" text="" class="spTextBlue" />
+                </VBox>
+                <VBox class="arrowSection" visible="{/isArrowVisible}">
+                    <Text text="&#x2192;" class="arrowText" /> <!-- Representación de la flecha -->
+                </VBox>
+                <VBox class="spBox">
+                    <Label id="lbRuta" text="RUTA" visible="{/isArrowVisible}" class="inputDescripcion"/>
+                    <Text id = "txtRuta" text="" class="spTextBlack" />
+                </VBox>
+            </HBox>
+        </VBox>
+    </FlexBox>
+    </Page>
+</mvc:View>

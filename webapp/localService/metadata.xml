@@ -1,0 +1,101 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<edmx:Edmx xmlns:sap="http://www.sap.com/Protocols/SAPData" xmlns:m="http://schemas.microsoft.com/ado/2007/08/dataservices/metadata" xmlns:edmx="http://schemas.microsoft.com/ado/2007/06/edmx" Version="1.0">
+
+
+-<edmx:DataServices m:DataServiceVersion="2.0">
+
+
+-<Schema xml:lang="es" xmlns="http://schemas.microsoft.com/ado/2008/09/edm" sap:schema-version="1" Namespace="ZVENTILADO_SRV">
+
+
+-<EntityType sap:content-version="1" Name="zprueba">
+
+
+-<Key>
+
+<PropertyRef Name="Dni"/>
+
+</Key>
+
+<Property Name="Dni" sap:label="DNI" MaxLength="10" Nullable="false" Type="Edm.String"/>
+
+<Property Name="Nombre" sap:label="NOMBRE" MaxLength="10" Type="Edm.String"/>
+
+<Property Name="Apellido" sap:label="APELLIDO" MaxLength="10" Type="Edm.String"/>
+
+</EntityType>
+
+
+-<EntityType sap:content-version="1" Name="smartformspdf">
+
+
+-<Key>
+
+<PropertyRef Name="PDFContent"/>
+
+</Key>
+
+<Property Name="PDFContent" Nullable="false" Type="Edm.Binary" sap:filterable="false" sap:sortable="false"/>
+
+</EntityType>
+
+
+-<EntityType sap:content-version="1" Name="sForm" m:HasStream="true">
+
+
+-<Key>
+
+<PropertyRef Name="Fname"/>
+
+</Key>
+
+<Property Name="Fname" sap:label="Formulario" MaxLength="30" Nullable="false" Type="Edm.String" sap:filterable="false" sap:sortable="false" sap:updatable="false" sap:creatable="false"/>
+
+</EntityType>
+
+
+-<EntityType sap:content-version="1" Name="sEtiquetas">
+
+
+-<Key>
+
+<PropertyRef Name="Fname"/>
+
+</Key>
+
+<Property Name="Fname" sap:label="Formulario" MaxLength="30" Nullable="false" Type="Edm.String" sap:filterable="false" sap:sortable="false" sap:updatable="false" sap:creatable="false"/>
+
+<Property Name="Valor" sap:label="VALOR" Nullable="false" Type="Edm.String" sap:filterable="false" sap:sortable="false" sap:updatable="false" sap:creatable="false"/>
+
+</EntityType>
+
+
+-<EntityContainer Name="ZVENTILADO_SRV_Entities" sap:supported-formats="atom json" m:IsDefaultEntityContainer="true">
+
+<EntitySet sap:content-version="1" Name="zpruebaSet" sap:pageable="false" EntityType="ZVENTILADO_SRV.zprueba"/>
+
+<EntitySet sap:content-version="1" Name="smartformspdfSet" sap:pageable="false" EntityType="ZVENTILADO_SRV.smartformspdf" sap:addressable="false" sap:deletable="false"/>
+
+<EntitySet sap:content-version="1" Name="sFormSet" sap:updatable="false" sap:creatable="false" sap:pageable="false" EntityType="ZVENTILADO_SRV.sForm" sap:deletable="false"/>
+
+<EntitySet sap:content-version="1" Name="sEtiquetasSet" sap:updatable="false" sap:creatable="false" sap:pageable="false" EntityType="ZVENTILADO_SRV.sEtiquetas" sap:deletable="false"/>
+
+
+-<FunctionImport Name="GenerateSmartFormPDF" m:HttpMethod="GET" EntitySet="smartformspdfSet" ReturnType="ZVENTILADO_SRV.smartformspdf">
+
+<Parameter Name="formName" Type="Edm.String" Mode="In"/>
+
+</FunctionImport>
+
+</EntityContainer>
+
+<atom:link xmlns:atom="http://www.w3.org/2005/Atom" href="http://erpdesa.intra.clvsa.com.ar:8000/sap/opu/odata/sap/ZVENTILADO_SRV/$metadata" rel="self"/>
+
+<atom:link xmlns:atom="http://www.w3.org/2005/Atom" href="http://erpdesa.intra.clvsa.com.ar:8000/sap/opu/odata/sap/ZVENTILADO_SRV/$metadata" rel="latest-version"/>
+
+</Schema>
+
+</edmx:DataServices>
+
+</edmx:Edmx>

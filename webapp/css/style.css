@@ -1,0 +1,137 @@
+/* Enter your custom styles here */
+/* Asegura que el contenedor ocupe toda la altura de la pantalla */
+.flexContainer {
+    display: flex;
+    flex-direction: column;
+    height: 100vh;
+    overflow: hidden; /* Evita las barras de desplazamiento */
+}
+.fullHeight {
+    height: 100%;
+    width: 100%;
+}
+
+.header {
+    justify-content: space-between;
+    padding: 10px;
+    background-color: black;
+    color: white;
+}
+
+.instruction {
+    padding: 10px;
+    background-color: yellow;
+    color: black;
+    text-align: center;
+}
+
+.inputSection {
+    display: flex;
+    justify-content: flex-start; /* Alinea los elementos al inicio */
+    padding: 10px;
+    align-items: center; /* Centra verticalmente los elementos */
+    width: 100%; /* Asegura que el HBox ocupe todo el ancho disponible */
+    box-sizing: border-box;
+}
+
+.inputSectionLogin{    
+    padding: 10px;
+    align-items: center; /* Centra verticalmente los elementos */
+}
+
+.label {
+    margin-right: 5px; /* Ajusta este valor para acercar el label al input */
+}
+
+.inputEan {
+    margin-right: 20px; /* Ajusta este valor para la separación entre el input de EAN y el button */
+}
+
+.button {
+    margin-right: 10px; /* Ajusta este valor para acercar el button al input de COD. INTERNO */
+    margin-left: 50px;
+}
+
+.inputCodigoInterno {
+    margin-left: 30px; /* Ajusta este valor para separar el input del botón */
+    border: 1px;
+}
+
+.inputDescripcion {
+    flex-grow: 1; /* Hace que el input ocupe todo el espacio disponible */
+    margin-left: 10px; /* Añade un margen izquierdo para separar del input anterior */
+    width: 100%; /* Asegura que el input ocupe todo el ancho disponible */
+    font-size: 3vh;
+}
+
+.eanSection,
+.codeSection {
+    flex-grow: 1;
+    margin: 20px;
+}
+
+.spSection {
+    flex-grow: 1;
+    justify-content: space-around;
+    align-items: center;
+    padding: 10px;
+    background-color: yellow;
+}
+
+.spBox {
+    width: 45%;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+.spTextBlue,
+.spTextBlack {
+    font-size: 60vh; /* Ajusta este tamaño según sea necesario */
+    width: 100%;
+    text-align: center;
+}
+
+.arrowSection {
+    width: 10%;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    padding: 20px;
+}
+
+.arrowText {
+    font-size: 30vh; /* Ajusta este tamaño según sea necesario */
+}
+
+.blackBackground {
+    background-color: black;
+    color: white;
+    text-align: center; /* Para centrar el texto */
+    font-size: 1.2rem; /* Tamaño de la fuente */
+}
+.noScroll {
+    overflow-y: hidden;
+}
+
+/*  datos tabla Cando se pulsa STOP*/
+.customVBox {
+    max-height: 70vh; /* 70% de la altura de la ventana */
+    overflow-y: auto; /* Habilitar desplazamiento vertical */
+}
+.headerCell{
+    border: 0px solid #000; /* Bordes de las celdas */
+    padding: 4px; /* Espaciado interno de las celdas */
+    text-align: center; /* Alinear texto al centro */
+    font-size: 2rem;
+}
+
+.sapMListTblRow, .sapMListTblRowAlternating {
+   /* background-color: #FFFFE0;  Color de fondo para las filas alternas */
+    border: 0px solid #000; /* Bordes para las filas */
+}
+
+.tituloSecundario{
+    font-size: 1.6rem;
+    justify-content: center;
+}

@@ -1,0 +1,7 @@
+<!-- CodeInputDialog.fragment.xml -->
+<core:FragmentDefinition xmlns="sap.m" xmlns:core="sap.ui.core">
+    <Dialog id="dialogoCI" title="Ingrese el código interno" afterClose="onCodeInputDialogClose">
+        <Input id="codeInput" placeholder="Ingrese el código interno" />
+        <Button text="Confirmar"  type="Emphasized" press="onCodeInputConfirm" />
+    </Dialog>
+</core:FragmentDefinition>

@@ -1,0 +1,34 @@
+<mvc:View controllerName="ventilado.ventilado.controller.View1"
+    xmlns:mvc="sap.ui.core.mvc" displayBlock="true"
+    xmlns="sap.m"
+    xmlns:m="sap.m">
+    <Page title="Inicio de Sesión">
+        <FlexBox >
+            <VBox class="fullHeight" justifyContent="Center" alignItems="Center">
+            <HBox  class="inputSectionLogin" >
+                <Label  class = "label " text="Puesto  : "  width="10em" textAlign="Right"/>
+                <Input id="puesto"  />                
+            </HBox>
+            <HBox  class="inputSectionLogin" >
+                <Label  class = "label " text="Reparto  :"    width="10em" textAlign="Right" />
+                <Input id="reparto"  />                
+            </HBox>
+            <HBox  class="inputSectionLogin" >
+                <Label class = "label "  text="Preparador  :"   width="10em"  textAlign="Right"/>
+                <Input id="Usuario"  />                
+            </HBox>
+            <HBox  class="inputSectionLogin" >
+                <Label class = "label "  text="Total de Unidades  :"  width="10em" textAlign="Right"/>
+                <Input id="tUnidades"  />                
+            </HBox>
+            <HBox  class="inputSectionLogin" >
+                <Label  class = "label " text="Fecha  :"   width="10em" textAlign="Right"/>
+                <Input id="fecha"  enabled="false" value="{viewModel>/date}"  />                
+            </HBox>
+                
+                <Button text="Scan de productos" press="onLoginPress" />
+            </VBox>
+        </FlexBox>
+    </Page>
+
+</mvc:View>
