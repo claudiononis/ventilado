@@ -516,7 +516,7 @@ sap.ui.define([
                 // Ejemplo de uso:
 var dniToDelete = 3;
 deleteRecord(dniToDelete, onSuccessFunction, onErrorFunction, "additionalParameter");
-
+ 
             }
         },
 
