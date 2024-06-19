@@ -1,4 +1,8 @@
 /* Enter your custom styles here */
+/*pagina inicial  ancho de botones*/
+.pagianaInicialButton {
+    width: 150px; /* Ajusta este valor al ancho deseado */
+}
 /* Asegura que el contenedor ocupe toda la altura de la pantalla */
 .flexContainer {
     display: flex;

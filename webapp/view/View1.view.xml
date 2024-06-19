@@ -14,20 +14,30 @@
                 <Input id="reparto"  />                
             </HBox>
             <HBox  class="inputSectionLogin" >
+                <Label class = "label "  text="Pto de Planificacion  :"  width="10em" textAlign="Right"/>
+                <Input id="pto_planif"  />                
+            </HBox>
+            <HBox  class="inputSectionLogin" >
                 <Label class = "label "  text="Preparador  :"   width="10em"  textAlign="Right"/>
                 <Input id="Usuario"  />                
             </HBox>
-            <HBox  class="inputSectionLogin" >
-                <Label class = "label "  text="Total de Unidades  :"  width="10em" textAlign="Right"/>
-                <Input id="tUnidades"  />                
-            </HBox>
+            
             <HBox  class="inputSectionLogin" >
                 <Label  class = "label " text="Fecha  :"   width="10em" textAlign="Right"/>
                 <Input id="fecha"  enabled="false" value="{viewModel>/date}"  />                
-            </HBox>
-                
-                <Button text="Scan de productos" press="onLoginPress" />
+            </HBox>  
+                <Button  text="Buscar datos" press="onBuscarPress" class = "pagianaInicialButton" />   
+                <Button id ="btScan" text="Scan de productos" press="onScanPress" class = "pagianaInicialButton" enabled= "false" />
+                <Button id ="btLog" text="Ver Log" press="onLogPress" class = "pagianaInicialButton" enabled= "false"/>        
+                <Button id ="btAxP" text="Avance x Producto" press="onAvancePPress" class = "pagianaInicialButton" enabled= "false"/>
+                <Button id ="btAxE"  text="Avance x Entrega" press="onAvanceEPress" class = "pagianaInicialButton" enabled= "false"/>
+                <Button id ="btCierre" text="Cierre" press="onCierrePress" class = "pagianaInicialButton" enabled= "false"/>
             </VBox>
+
+               
+        
+
+   
         </FlexBox>
     </Page>
 

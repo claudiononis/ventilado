@@ -37,6 +37,26 @@ sap.ui.define([
                 // set the device model
                 this.setModel(models.createDeviceModel(), "device");
                 
+               // Crear el modelo global
+                var oDate = new Date();
+                var oFormattedDate = this._formatDate(oDate);
+
+               var oGlobalModel = new JSONModel({
+                    puesto :"",
+                    reparto: "",
+                    operador: "",
+                    fecha: oFormattedDate,
+                    cantidad: "",
+                    ruta:""
+                });
+
+                // Establecer el modelo global en el componente para que esté disponible globalmente
+                this.setModel(oGlobalModel, "globalModel");
+
+            },
+            _formatDate: function(oDate) {
+                var oDateFormat = sap.ui.core.format.DateFormat.getDateTimeInstance({ pattern: "yyyy-MM-dd" });
+                return oDateFormat.format(oDate);
             }
         });
     }

@@ -10,8 +10,8 @@
             <HBox class="header noScroll">
                 <Button text="START" type="Reject" press="onStartPress" enabled="{=!${/isStarted}}" />
                 <Button id="stop" text="STOP" type="Reject" press="onStopDialog" visible="{/isStarted}" icon="sap-icon://flag" />
-                <Text text="Estación de trabajo: 3"  class="blackBackground"/>
-                <Text text="Reparto: 399598"  class="blackBackground"/>
+                <Text text="{/puesto}"  class="blackBackground"/>
+                <Text text="{/transporte}"  class="blackBackground"/>
                 <Button text="Print Etiquetas" press="onGeneratePDF" icon="sap-icon://print"/>
                 <Button text="CRUD Crear" press="onCrudCrear"/>
                 <Button text="CRUD Act" press="onCrudUpdate"/>
@@ -23,17 +23,15 @@
                 <Label id="lEan" text="EAN" class="label"/>
                 <Input id="eanInput"  enabled="{/isStarted}" class="inputEan" submit="onEanInputSubmit" />   
                 <Button id="btCi2" enabled="{/isStarted}" text="COD. INTERNO" type="Reject" press="onOpenCodeInputDialog" class="button"/>
-                <Label id="edtCI" text="" class="inputCodigoIntern" width="100px"/>
-                
-                <Label id="lDescripcion" text="" class="inputDescripcion"/>
-                
+                <Label id="edtCI" text="" class="inputCodigoIntern" width="100px"/>                
+                <Label id="lDescripcion" text="" class="inputDescripcion"/>                
             </HBox>  
              
             <HBox class="spSection">
                 <VBox class="spBox ">
                 <HBox  class="spSection"> 
                     <Label id="lbCantidad" text="CANTIDAD" visible="{/isArrowVisible}" class="inputDescripcion"/>
-                    <Button id="btParcial1" visible="{/isArrowVisible}" text="PARCIAL" type="Reject" press="onPessParcialDialog" class="button"/>
+                    
                 </HBox>
                     <Text id= "txtCantidad" text="" class="spTextBlue" />
                 </VBox>
