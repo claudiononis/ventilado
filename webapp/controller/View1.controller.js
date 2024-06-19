@@ -41,7 +41,7 @@ sap.ui.define([
 
 
 
-    },
+        },
     
         _formatDate: function (date) {
             var day = String(date.getDate()).padStart(2, '0');
@@ -130,166 +130,118 @@ sap.ui.define([
 
 //
 /////////   Funciones para base offline
-_initDatabase: function () {
-  
-    //Se crea la base local con todos sus campos para el transporte que se ventilara
-    //Ver de hacer un function impor y traer labase, luego volcarla aca
-    var request = indexedDB.open("ventilado", 2);
-
-    request.onerror = function (event) {
-        console.error("Error al abrir la base de datos:", event.target.errorCode);
-    };
-
-    request.onupgradeneeded = function (event) {
-        var db = event.target.result;
-       // Si el objectStore ya existe, entonces solo actualizar los índices que faltan
-    if (!db.objectStoreNames.contains("ventilado")) {
-        var objectStore = db.createObjectStore("ventilado", { keyPath: "Id" });
-    } else {
-        var objectStore = event.target.transaction.objectStore("ventilado");
-    }
-
-    if (!objectStore.indexNames.contains("Ean")) {
-        objectStore.createIndex("Ean", "Ean", { unique: false });
-    }
-    if (!objectStore.indexNames.contains("Fecha")) {
-        objectStore.createIndex("Fecha", "Fecha", { unique: false });
-    }
-    if (!objectStore.indexNames.contains("Transporte")) {
-        objectStore.createIndex("Transporte", "Transporte", { unique: false });
-    }
-    if (!objectStore.indexNames.contains("Entrega")) {
-        objectStore.createIndex("Entrega", "Entrega", { unique: false });
-    }
-    if (!objectStore.indexNames.contains("NombreDestinatario")) {
-        objectStore.createIndex("NombreDestinatario", "NombreDestinatario", { unique: false });
-    }
-    if (!objectStore.indexNames.contains("Nonbre_destinatario")) {
-        objectStore.createIndex("Nonbre_destinatario", "Nonbre_destinatario", { unique: false });
-    }
-    if (!objectStore.indexNames.contains("Calle")) {
-        objectStore.createIndex("Calle", "Calle", { unique: false });
-    }
-    if (!objectStore.indexNames.contains("Lugar_destinatario")) {
-        objectStore.createIndex("Lugar_destinatario", "Lugar_destinatario", { unique: false });
-    }
-    if (!objectStore.indexNames.contains("Codigo_interno")) {
-        objectStore.createIndex("Codigo_interno", "Codigo_interno", { unique: false });
-    }
-    if (!objectStore.indexNames.contains("Descricion")) {
-        objectStore.createIndex("Descricion", "Descricion", { unique: false });
-    }
-    if (!objectStore.indexNames.contains("Cantidad_entrega")) {
-        objectStore.createIndex("Cantidad_entrega", "Cantidad_entrega", { unique: false });
-    }
-    if (!objectStore.indexNames.contains("Lugar_p_disp")) {
-        objectStore.createIndex("Lugar_p_disp", "Lugar_p_disp", { unique: false });
-    }
-    if (!objectStore.indexNames.contains("Cant_escaneada")) {
-        objectStore.createIndex("Cant_escaneada", "Cant_escaneada", { unique: false });
-    }
-    if (!objectStore.indexNames.contains("Preparador")) {
-        objectStore.createIndex("Preparador", "Preparador", { unique: false });
-    }
-    if (!objectStore.indexNames.contains("Estado")) {
-        objectStore.createIndex("Estado", "Estado", { unique: false });
-    }
-
-    console.log("Almacén de objetos e índices creados con éxito.");
-    };
-
-    request.onsuccess = function (event) {
-        this.db = event.target.result;
-        console.log("Base de datos abierta con éxito.");
-        this._fetchAndStoreOData(); //Luego de abrir la base se leen y guardan los datos
-    }.bind(this);
-},
-
-_fetchAndStoreOData: function () {
-    var oModel = new ODataModel("/sap/opu/odata/sap/ZVENTILADO_SRV/");
-    //Se leen los datos del backend filtrando por el numero de transporte
-     // Configurar los filtros
-     var aFilters = [];        
-     aFilters.push(new Filter("Transporte", FilterOperator.EQ, sTransporte));
-    oModel.read("/ventiladoSet", {
-        filters: aFilters,
-        success: function (oData) {
-            var transaction = this.db.transaction(["ventilado"], "readwrite");
-            var objectStore = transaction.objectStore("ventilado");
-            // Verificar si oData.results es un array
-            if (Array.isArray(oData.results)) {
-                // Si es un array, iterar sobre cada item
-                oData.results.forEach(function (item) {
-                    // Completando el campo "Transporte" con ceros a la izquierda si es necesario
-                    item.Transporte = (item.Transporte || '').padStart(10, '0');
-                    // Guardar el item en el object store
-                    objectStore.put(item);
-                });
-            } else {
-                // Si no es un array, manejar el único item directamente
-                var item = oData.results;
-                // Completando el campo "Transporte" con ceros a la izquierda si es necesario
-                item.Transporte = (item.Transporte || '').padStart(10, '0');
-                // Guardar el item en el object store
-                objectStore.put(item);
-            }
-            console.log("Datos copiados con éxito.");
-        }.bind(this),
-        error: function (oError) {
-            console.error("Error al leer datos del servicio OData:", oError);
-        }
-    });
-},
-
-
-/*
-onGetData: function (key) {
-    return new Promise(function(resolve, reject) {
-        var transaction = this.db.transaction(["Ventilado"], "readonly");
-        var objectStore = transaction.objectStore("Ventilado");
-        var requestGet = objectStore.get(key);
-
-        requestGet.onsuccess = function (event) {
-            if (event.target.result) {
-                var data = event.target.result;
-                
-                var cantidad = data.Cantidad_entrega;//aca va la cantidad
-                var ruta = data.Apellido;// aca la ruta
-                var result = {
-                    Cantidad: cantidad, 
-                    Ruta: ruta
-                };
-                resolve(result); // Resuelve la promesa con un objeto que contiene los valores de Nombre y Apellido
-            } else {
-                reject("Dato no encontrado."); // Rechaza la promesa si no se encuentra el dato
-            }
-        };
-
-        requestGet.onerror = function (event) {
-            reject("Error al leer el dato: " + event.target.errorCode); // Rechaza la promesa en caso de error
-        };
-    }.bind(this));
-},
-
-
-onDeleteData: function () {
-    var transaction = this.db.transaction(["Ventilado"], "readwrite");
-    var objectStore = transaction.objectStore("Ventilado");
-    var requestDelete = objectStore.delete("1234567890");
-
-    requestDelete.onsuccess = function (event) {
-        console.log("Dato eliminado con éxito.");
-    };
-
-    requestDelete.onerror = function (event) {
-        console.error("Error al eliminar el dato:", event.target.errorCode);
-    };
-}
-
-
-
-
-//  */
+        _initDatabase: function () {
         
+            //Se crea la base local con todos sus campos para el transporte que se ventilara
+            //Ver de hacer un function impor y traer labase, luego volcarla aca
+            var request = indexedDB.open("ventilado", 2);
+
+            request.onerror = function (event) {
+                console.error("Error al abrir la base de datos:", event.target.errorCode);
+            };
+
+            request.onupgradeneeded = function (event) {
+                var db = event.target.result;
+            // Si el objectStore ya existe, entonces solo actualizar los índices que faltan
+            if (!db.objectStoreNames.contains("ventilado")) {
+                var objectStore = db.createObjectStore("ventilado", { keyPath: "Id" });
+            } else {
+                var objectStore = event.target.transaction.objectStore("ventilado");
+            }
+
+            if (!objectStore.indexNames.contains("Ean")) {
+                objectStore.createIndex("Ean", "Ean", { unique: false });
+            }
+            if (!objectStore.indexNames.contains("Fecha")) {
+                objectStore.createIndex("Fecha", "Fecha", { unique: false });
+            }
+            if (!objectStore.indexNames.contains("Transporte")) {
+                objectStore.createIndex("Transporte", "Transporte", { unique: false });
+            }
+            if (!objectStore.indexNames.contains("Entrega")) {
+                objectStore.createIndex("Entrega", "Entrega", { unique: false });
+            }
+            if (!objectStore.indexNames.contains("NombreDestinatario")) {
+                objectStore.createIndex("NombreDestinatario", "NombreDestinatario", { unique: false });
+            }
+            if (!objectStore.indexNames.contains("Nonbre_destinatario")) {
+                objectStore.createIndex("Nonbre_destinatario", "Nonbre_destinatario", { unique: false });
+            }
+            if (!objectStore.indexNames.contains("Calle")) {
+                objectStore.createIndex("Calle", "Calle", { unique: false });
+            }
+            if (!objectStore.indexNames.contains("Lugar_destinatario")) {
+                objectStore.createIndex("Lugar_destinatario", "Lugar_destinatario", { unique: false });
+            }
+            if (!objectStore.indexNames.contains("Codigo_interno")) {
+                objectStore.createIndex("Codigo_interno", "CodigoInterno", { unique: false });
+            }
+            if (!objectStore.indexNames.contains("Descricion")) {
+                objectStore.createIndex("Descricion", "Descricion", { unique: false });
+            }
+            if (!objectStore.indexNames.contains("Cantidad_entrega")) {
+                objectStore.createIndex("Cantidad_entrega", "Cantidad_entrega", { unique: false });
+            }
+            if (!objectStore.indexNames.contains("Lugar_p_disp")) {
+                objectStore.createIndex("Lugar_p_disp", "Lugar_p_disp", { unique: false });
+            }
+            if (!objectStore.indexNames.contains("Cant_escaneada")) {
+                objectStore.createIndex("Cant_escaneada", "Cant_escaneada", { unique: false });
+            }
+            if (!objectStore.indexNames.contains("Preparador")) {
+                objectStore.createIndex("Preparador", "Preparador", { unique: false });
+            }
+            if (!objectStore.indexNames.contains("Estado")) {
+                objectStore.createIndex("Estado", "Estado", { unique: false });
+            }
+
+            console.log("Almacén de objetos e índices creados con éxito.");
+            
+            };
+
+            request.onsuccess = function (event) {
+                this.db = event.target.result;
+                console.log("Base de datos abierta con éxito.");
+                this._fetchAndStoreOData(); //Luego de abrir la base se leen y guardan los datos
+            }.bind(this);
+        },
+
+        _fetchAndStoreOData: function () {
+            var oModel = new ODataModel("/sap/opu/odata/sap/ZVENTILADO_SRV/");
+            //Se leen los datos del backend filtrando por el numero de transporte
+            // Configurar los filtros
+            var aFilters = [];        
+            aFilters.push(new Filter("Transporte", FilterOperator.EQ, sTransporte));
+            oModel.read("/ventiladoSet", {
+                filters: aFilters,
+                success: function (oData) {
+                    var transaction = this.db.transaction(["ventilado"], "readwrite");
+                    var objectStore = transaction.objectStore("ventilado");
+                    // Verificar si oData.results es un array
+                    if (Array.isArray(oData.results)) {
+                        // Si es un array, iterar sobre cada item
+                        oData.results.forEach(function (item) {
+                            // Completando el campo "Transporte" con ceros a la izquierda si es necesario
+                            item.Transporte = (item.Transporte || '').padStart(10, '0');
+                            // Guardar el item en el object store
+                            objectStore.put(item);
+                        });
+                    } else {
+                        // Si no es un array, manejar el único item directamente
+                        var item = oData.results;
+                        // Completando el campo "Transporte" con ceros a la izquierda si es necesario
+                        item.Transporte = (item.Transporte || '').padStart(10, '0');
+                        // Guardar el item en el object store
+                        objectStore.put(item);
+                    }
+                    console.log("Datos copiados con éxito.");
+                }.bind(this),
+                error: function (oError) {
+                    console.error("Error al leer datos del servicio OData:", oError);
+                }
+            });
+
+        },
+   
     });
 });

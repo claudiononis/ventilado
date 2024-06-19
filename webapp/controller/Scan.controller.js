@@ -68,8 +68,58 @@ sap.ui.define([
                 ruta: 0,
                 ean :""
             });
-            this.getView().setModel(oModel);        
-
+            this.getView().setModel(oModel);   
+            
+            
+            // Crear un modelo local para almacenar los datos
+            var oLocalModel = new sap.ui.model.json.JSONModel({
+                codConfirmacionData: []
+            });
+            this.getView().setModel(oLocalModel, "localModel");
+    
+            // Llamar a la función para leer los datos del backend
+            this._fetchCodConfirmacionData();
+                    
+            
+        },
+        _findRouteByEAN: function(ean) {
+            var oLocalModel = this.getView().getModel("localModel");
+            var aCodConfirmacionData = oLocalModel.getProperty("/codConfirmacionData");
+        
+            // Buscar el EAN en el array de datos
+            var foundItem = aCodConfirmacionData.find(function(item) {
+                return item.Ean === ean;
+            });
+        
+            if (foundItem) {
+                return foundItem.Ruta;
+            } else {
+                console.log("EAN no encontrado.");
+                return null;
+            }
+        },
+        _fetchCodConfirmacionData: function() {
+            var oModel = new sap.ui.model.odata.v2.ODataModel("/sap/opu/odata/sap/ZVENTILADO_SRV/");
+            
+            oModel.read("/CodConfirmacionSet", {
+                success: function (oData) {
+                    var oLocalModel = this.getView().getModel("localModel");
+        
+                    // Verificar si oData.results es un array
+                    if (Array.isArray(oData.results)) {
+                        // Si es un array, guardar todos los items en el modelo local
+                        oLocalModel.setProperty("/codConfirmacionData", oData.results);
+                    } else {
+                        // Si no es un array, manejar el único item directamente
+                        var item = oData.results;
+                        oLocalModel.setProperty("/codConfirmacionData", [item]);
+                    }
+                    console.log("Datos copiados con éxito.");
+                }.bind(this),
+                error: function (oError) {
+                    console.error("Error al leer datos del servicio OData:", oError);
+                }
+            });
         },
 
         onInputChange1: function(oEvent) {  
@@ -153,9 +203,10 @@ sap.ui.define([
                 //this.agregarAlLog();
                 var cantidadYRuta = await this.obtenerCantidadYRuta(sValue);
                 var cantidadActual = oModel.getProperty("/cantidad");
+                var sEan = oModel.getProperty("/ean");
                 // Leer el valor actual de la propiedad 'cuenta'
                 var cuentaActual = oModel.getProperty("/cuenta");
-                if (cantidadYRuta.cantidad > 0 && cantidadActual == 0){
+                if (cantidadYRuta.cantidad > 0 && cantidadActual == 0 && sEan == ""){
                     cantidad.setText(cantidadYRuta.cantidad); // Establece el texto con la cantidad obtenida
                     ruta.setText(cantidadYRuta.ruta); // Establece el texto con la ruta obtenida                    
                     descripcion.setText(cantidadYRuta.descripcion); // Establece el texto con la descripcion
@@ -165,9 +216,10 @@ sap.ui.define([
                      // Establecer el nuevo valor en el modelo
                      oModel.setProperty("/cantidad", cantidadYRuta.cantidad);
                      oModel.setProperty("/cuenta", nuevaCuenta);
+                     oModel.setProperty("/ean", sValue);
                    //  this.agregarLog();
                 }
-                else if (cantidadYRuta.cantidad > 0 && cantidadYRuta.cantidad  > cuentaActual){
+                else if (cantidadYRuta.cantidad > 0 && cantidadYRuta.cantidad  > cuentaActual && sEan == sValue){
                   // Incrementar el valor
                   var nuevaCuenta = cuentaActual + 1;
  
@@ -175,8 +227,23 @@ sap.ui.define([
                   oModel.setProperty("/cantidad", cantidadYRuta.cantidad);
                   oModel.setProperty("/cuenta", nuevaCuenta);
                 }
-                else if (cantidadYRuta.cantidad > 0 && cantidadYRuta.cantidad  == cuentaActual){
+                else if (cantidadYRuta.cantidad > 0 && cantidadYRuta.cantidad  == cuentaActual && sEan == sValue){
                         console.log("Error ya estan todos los productos");
+                }
+                else if(sEan != sValue){
+                    var ruta = this._findRouteByEAN(sValue);
+
+                    if (ruta) {
+                        // Si se encuentra la ruta, realizar las acciones necesarias
+                        console.log("Ruta encontrada:", ruta);
+                        // Por ejemplo, puedes establecer la ruta en el modelo o realizar otras operaciones
+                        var oLocalModel = this.getView().getModel("localModel");
+                        oLocalModel.setProperty("/rutaEncontrada", ruta);
+                    } else {
+                        // Si no se encuentra la ruta, manejar el caso adecuadamente
+                        console.log("No se encontró la ruta para el EAN proporcionado.");
+                    }
+                    console.log("ver si es confirmacion")
                 }
             } catch (error) {
                 console.error("Error al obtener la cantidad y la ruta:", error);
@@ -262,20 +329,22 @@ sap.ui.define([
         },
              
         // Método para manejar la confirmación del valor ingresado en el diálogo del código interno
-        onCodeInputConfirm: function() {
+        onCodeInputConfirm: async function() {
             var codeInput = this.byId("codeInput");
             var inputValue = codeInput.getValue();
 
             // Transferir el valor ingresado al campo de entrada principal
             var mainInput = this.getView().byId("edtCI");
             mainInput.setText(inputValue);
+            //Buscar en la base de datos
+
             this.byId("dialogoCI").close();
 //  buscar  el EAN del codigo interno ingresado y poner el valor de EAN en el eanInput
-
+            var datos = await this.onGetData2(inputValue);
             var eanInput = this.byId("eanInput");
-            eanInput.setValue("5");// 5 seria en valor de EAN recuperado
+            eanInput.setValue(datos.ean);// Muestra valor de EAN recuperado
            // Llamar a la función handleEanEnter
-           this.handleEanEnter("5");
+           this.handleEanEnter(datos.ean);
      
         },
 
@@ -336,7 +405,7 @@ sap.ui.define([
          // Método para abrir el diálogo Stop
          onStopDialog: function() {
            
-            //Cargamos el Dialogo
+            //Cargamos el Dialogo  
             var oView = this.getView();            
             if (!this.byId("dialogStop")) {
              // load asynchronous XML fragment
@@ -688,6 +757,8 @@ _fetchAndStoreOData: function () {
 },*/
 
 onGetData: function (key) {
+    ctx = this;
+    var sKey = key;
     return new Promise(function(resolve, reject) {
         var request = indexedDB.open("ventilado", 2); // Asegúrate de usar la misma versión
 
@@ -695,12 +766,13 @@ onGetData: function (key) {
             var db = event.target.result;
             var transaction = db.transaction(["ventilado"], "readonly");
             var objectStore = transaction.objectStore("ventilado");
-
+         
             // Verificar si el índice "Ean" existe
-            if (!objectStore.indexNames.contains("Ean")) {
-                console.error("El índice 'Ean' no se encontró.");
-                return;
-            }
+          
+                if (!objectStore.indexNames.contains("Ean")) {
+                    console.error("El índice 'Ean' no se encontró.");
+                    return;
+                }
 
             var index = objectStore.index("Ean");
 
@@ -740,6 +812,95 @@ onGetData: function (key) {
                     resolve(result); // Resuelve la promesa con un objeto que contiene los valores de cantidad y Ruta
                 } else {
                     console.log("No se encontró ningún registro con el EAN proporcionado.");
+                    // Busca para ver si es un Codigo de confirmacion
+                    var ruta = ctx._findRouteByEAN(sKey);
+
+                    if (ruta) {
+                        // Si se encuentra la ruta, realizar las acciones necesarias
+                        console.log("Ruta encontrada:", ruta);
+                        // Ver si ya se completa la cantidad escaneada 
+                        var oModel = ctx.getView().getModel();
+                        if(oModel.getProperty("/cuenta")==oModel.getProperty("/cantidad")){
+                            console.log("Confirmado");
+                        }
+                        else{
+                            console.log("falta escanear");
+                        }
+                       
+                    } else {
+                        // Si no se encuentra la ruta, manejar el caso adecuadamente
+                        console.log("No se encontró la ruta para el EAN proporcionado.");
+                    }
+                }
+            };
+
+            getRequest.onerror = function(event) {
+                console.log("Error al buscar el registro:", event.target.error);
+            };
+        };
+
+        request.onerror = function(event) {
+            console.log("Error al abrir la base de datos:", event.target.error);
+        };
+    }.bind(this));
+},
+/////
+
+onGetData2: function (key) {
+    return new Promise(function(resolve, reject) {
+        var request = indexedDB.open("ventilado", 2); // Asegúrate de usar la misma versión
+
+        request.onsuccess = function(event) {
+            var db = event.target.result;
+            var transaction = db.transaction(["ventilado"], "readonly");
+            var objectStore = transaction.objectStore("ventilado");
+         
+            // Verificar si el índice "Codigo interno" existe
+          
+                if (!objectStore.indexNames.contains("Codigo_interno")) {
+                    console.error("El índice 'Codigo interno' no se encontró.");
+                    return;
+                }
+
+            var index = objectStore.index("Codigo_interno");
+
+            var getRequest = index.get(key);
+
+            getRequest.onsuccess = function(event) {
+                var data = event.target.result;
+                if (data) {
+                    console.log("Registro encontrado:", data);
+                    // Aquí puedes manejar el registro encontrado
+                     // Accediendo a cada campo del registro
+                    var id = data.Id;
+                    var ean = data.Ean;
+                    var fecha = data.Fecha;
+                    var transporte = data.Transporte;
+                    var entrega = data.Entrega;
+                    var nonbreDestinatario = data.NonbreDestinatario;
+                    var calle = data.Calle;
+                    var lugarDestinatario = data.LugarDestinatario;
+                    var codigoInterno = data.CodigoInterno;
+                    var descripcion = data.Descricion;
+                    var cantidadEntrega = data.CantidadEntrega;
+                    var lugarPDisp = data.LugarPDisp;
+                    var cantEscaneada = data.CantEscaneada;
+                    var preparador = data.Preparador;
+                    var estado = data.Estado;
+                    var cantidad = data.CantidadEntrega;//aca va la cantidad
+                    var ruta = data.LugarPDisp;// aca la ruta
+                    var result = {
+                        Cantidad: cantidad, 
+                        Ruta: ruta,
+                        descripcion:descripcion,
+                        ean: ean
+                    };
+
+
+
+                    resolve(result); // Resuelve la promesa con un objeto que contiene los valores de cantidad y Ruta
+                } else {
+                    console.log("No se encontró ningún registro con el Codigo interno proporcionado.");
                 }
             };
 
@@ -754,6 +915,8 @@ onGetData: function (key) {
     }.bind(this));
 },
 
+
+//////
 
 onDeleteData: function () {
     var transaction = this.db.transaction(["ventilado"], "readwrite");

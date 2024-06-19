@@ -13,10 +13,12 @@
                 <Text text="{/puesto}"  class="blackBackground"/>
                 <Text text="{/transporte}"  class="blackBackground"/>
                 <Button text="Print Etiquetas" press="onGeneratePDF" icon="sap-icon://print"/>
+                <Button text="Avance" press="onStopDialog"  enabled="{/isStarted}"/>
+                <!-- Botones de prueba 
                 <Button text="CRUD Crear" press="onCrudCrear"/>
                 <Button text="CRUD Act" press="onCrudUpdate"/>
                 <Button text="CRUD Read" press="onCrudRead"/>
-                <Button text="CRUD Borrar" press="onCrudBorrar"/>
+                <Button text="CRUD Borrar" press="onCrudBorrar"/>-->
             </HBox>
             
             <HBox class="inputSection">

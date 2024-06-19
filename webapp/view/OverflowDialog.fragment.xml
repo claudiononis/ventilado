@@ -1,0 +1,14 @@
+<!-- StopDialog.fragment.xml -->
+<core:FragmentDefinition xmlns="sap.m" xmlns:core="sap.ui.core">
+
+    <Dialog id="dialogoOverflow" title="Se supero la cantidad de Productos." afterClose="onStopDialogClose"  >
+       <VBox >
+        <VBox alignItems="Center">
+            <Label text="Presione confirmar y escanee la ruta de destino" class="tituloSecundario" />
+        </VBox>           
+           
+            <Button text="Confirmar" type="Emphasized" press="onStopConfirm" />
+        </VBox>
+    </Dialog>
+    
+</core:FragmentDefinition>
