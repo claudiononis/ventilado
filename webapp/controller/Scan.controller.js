@@ -10,67 +10,13 @@ sap.ui.define([
 
 ], function (Controller, MessageToast, PDFViewer,Fragment,JSONModel,ODataModel,Filter,FilterOperator) {
     "use strict";
-    var ctx;  // Variabl eglobal en el controlador para guardar el contexto
+    var ctx= this;  // Variabl eglobal en el controlador para guardar el contexto
     return Controller.extend("ventilado.ventilado.controller.View1", {
          
         onInit: function () {
             this._initDatabase();
             this._checkNetworkStatus();  // funcion para que el navegador controle la conexion a internet
-
-            // Definir un objeto para contener los datos de la tabla con el avance- Productos escaneados ,cubetas etc
-            var tableData = {};
-
-            // Definir los nombres de las columnas
-            var columnNames = ["Ruta", "TOT", "SCAN", "FALTA", "Cub TEO", "C Real", "Pa"];
-
-            // Rellenar el objeto con propiedades vacías para cada columna
-            columnNames.forEach(function(column) {
-                tableData[column] = "";
-            });
-
-            // Agregar más registros al modelo- aca ver como en el problema real sea la tabla entera con los totales y las cubetas TEORICAS
-            var nuevosRegistros = [
-                {"Ruta": "05", "TOT": "10", "SCAN": "5", "FALTA": "5", "Cub TEO": "15", "C Real": "3", "Pa": "2"},
-                {"Ruta": "02", "TOT": "10", "SCAN": "5", "FALTA": "5", "Cub TEO": "15", "C Real": "3", "Pa": "2"},
-                {"Ruta": "03", "TOT": "15", "SCAN": "10", "FALTA": "5", "Cub TEO": "20", "C Real": "4", "Pa": "3"}
-            ];
-
-            // Definir un array para contener los registros de la tabla
-            var tableDataArray = [];
-
-            // Agregar los nuevos registros al array
-            nuevosRegistros.forEach(function(registro) {
-                var nuevoRegistro = {};
-                // Asignar cada valor del registro al correspondiente nombre de columna
-                columnNames.forEach(function(column) {
-                    nuevoRegistro[column] = registro[column];
-                });
-                // Agregar el nuevo registro al array
-                tableDataArray.push(nuevoRegistro);
-            });
-
-            //Recupero el modelo global 
-            //var oGlobalModel = this.getView().getModel("globalModel");
-            var oGlobalModel = this.getOwnerComponent().getModel("globalModel");
-
-           
-            // Agregar el modelo con los datos de la tabla           
-
-            // Inicializar el modelo de datos para la pagina
-            var oModel = new JSONModel({
-                isStarted:      false,   //verdadero si se pulso el boton START
-                isArrowVisible: false, // bandera para mostrar laflecha de lapantalla de escaneo
-                tableData:      tableDataArray , // tabla para registrar el avance
-                puesto:        "Estacion de trabajo Nro: " + oGlobalModel.getData().puesto,
-                transporte:    "Reparto: "  +oGlobalModel.getData().reparto,
-                cuenta: 0,
-                cantidad : 0,
-                ruta: 0,
-                ean :""
-            });
-            this.getView().setModel(oModel);   
-            
-            
+            this.obtenerYProcesarDatos();           
             // Crear un modelo local para almacenar los datos
             var oLocalModel = new sap.ui.model.json.JSONModel({
                 codConfirmacionData: []
@@ -78,10 +24,112 @@ sap.ui.define([
             this.getView().setModel(oLocalModel, "localModel");
     
             // Llamar a la función para leer los datos del backend
-            this._fetchCodConfirmacionData();
-                    
+            this._fetchCodConfirmacionData();                   
             
         },
+        obtenerDatosDeIndexedDB: function () {
+            return new Promise((resolve, reject) => {
+              let request = indexedDB.open("ventilado",2);
+          
+              request.onerror = (event) => {
+                console.log("Error al abrir la base de datos:", event);
+                reject("Error al abrir la base de datos");
+              };
+          
+              request.onsuccess = (event) => {
+                let db = event.target.result;
+                let transaction = db.transaction(["ventilado"], "readonly");
+                let objectStore = transaction.objectStore("ventilado");
+                let data = [];
+          
+                objectStore.openCursor().onsuccess = (event) => {
+                  let cursor = event.target.result;
+                  if (cursor) {
+                    data.push(cursor.value);
+                    cursor.continue();
+                  } else {
+                    resolve(data);
+                  }
+                };
+              };
+            });
+          },
+        obtenerYProcesarDatos: async function () {
+            try {
+                let datos = await this.obtenerDatosDeIndexedDB();
+                let resultado = this.procesarDatos(datos);
+        
+                // Nombres de las columnas
+                var columnNames = ["Ruta", "TOT", "SCAN", "FALTA", "Cub TEO", "C Real", "Pa"];
+        
+                // Mapear arrayResultado a la estructura de tableDataArray
+                var tableDataArray = resultado.map((registro) => {
+                    var nuevoRegistro = {};
+                    columnNames.forEach((column) => {
+                        nuevoRegistro[column] = registro[column] || "";
+                    });
+                    return nuevoRegistro;
+                });
+        
+                // Actualizar el modelo con tableDataArray
+                var oGlobalModel = this.getOwnerComponent().getModel("globalModel");
+                var oModel = new sap.ui.model.json.JSONModel({
+                    isStarted:      false,   // verdadero si se pulso el botón START
+                    isArrowVisible: false,   // bandera para mostrar la flecha de la pantalla de escaneo
+                    tableData:      tableDataArray, // tabla para registrar el avance
+                    puesto:         "Estación de trabajo Nro: " + oGlobalModel.getData().puesto,
+                    transporte:     "Reparto: " + oGlobalModel.getData().reparto,
+                    cuenta:         0,
+                    cantidad:       0,
+                    ruta:           0,
+                    ean:            "",
+                    id : 0
+                });
+                this.getView().setModel(oModel);
+        
+                console.log(tableDataArray);
+            } catch (error) {
+                console.log("Error:", error);
+            }
+          },
+        procesarDatos: function(datos) {
+            let resultado = {};            
+            datos.forEach((registro) => {
+                let ruta = registro.LugarPDisp;
+                let cantidad = registro.CantidadEntrega;            
+                if (!resultado[ruta]) {
+                    // Inicializa el objeto de la ruta si no existe
+                    resultado[ruta] = {
+                        "Ruta": ruta,
+                        "TOT": 0,
+                        "SCAN": 0, // Esto es un ejemplo, ajusta según tus necesidades
+                        "FALTA": 0, // Esto es un ejemplo, ajusta según tus necesidades
+                        "Cub TEO": 0, // Esto es un ejemplo, ajusta según tus necesidades
+                        "C Real": 0, // Esto es un ejemplo, ajusta según tus necesidades
+                        "Pa": 0, // Esto es un ejemplo, ajusta según tus necesidades
+                        fecha: registro.fecha,  //Suponiendo que la fecha es la misma para todos los registros de la misma ruta
+                        transportista: registro.transportista  // Suponiendo que el transportista es el mismo para todos los registros de la misma ruta
+                    };
+                }
+
+                // Suma la cantidad al total
+                resultado[ruta]["TOT"] += cantidad;
+                resultado[ruta]["FALTA"] += cantidad;
+                // Aquí deberías agregar lógica para calcular SCAN, FALTA, Cub TEO, C Real, Pa
+            });
+            
+            // Convierte el objeto resultado en un array
+            let arrayResultado = Object.keys(resultado).map((ruta) => resultado[ruta]);
+            
+            return arrayResultado;
+        },
+
+
+
+
+
+         
+
         _findRouteByEAN: function(ean) {
             var oLocalModel = this.getView().getModel("localModel");
             var aCodConfirmacionData = oLocalModel.getProperty("/codConfirmacionData");
@@ -122,6 +170,7 @@ sap.ui.define([
             });
         },
 
+       /** Inicio : Rutinas que se activan cuando se competan la cantidad de cubetas reales   */
         onInputChange1: function(oEvent) {  
             // Obtener el valor del input modificado
             var newValue = oEvent.getParameter("value");
@@ -150,6 +199,7 @@ sap.ui.define([
             oModel.setProperty(oContext.getPath() + "/Pa", newValue);
             
         },
+/** Fin : Rutinas que se activan cuando se competan la cantidad de cubetas reales   */
 
         _checkNetworkStatus: function () {
             if (navigator.onLine) {
@@ -163,7 +213,9 @@ sap.ui.define([
             this._checkNetworkStatus();
         },
 
-        // Arranca el escaneo
+        /////////// Arranca el escaneo  //////////////////////////////////////////
+
+
         onStartPress:function (){
 
             var oModel = this.getView().getModel();
@@ -181,7 +233,7 @@ sap.ui.define([
             });
 
         },
-
+/**    Se dispara con el ENTER luego del EAN */
         onEanInputSubmit: function (oEvent) {
             // Detectar cuando se presiona Enter en el input del EAN
             var oInput = oEvent.getSource();
@@ -192,63 +244,166 @@ sap.ui.define([
 
         handleEanEnter: async function (sValue) {
              // Lógica a ejecutar cuando se presiona Enter en el input del EAN
-            var cantidad = this.getView().byId("txtCantidad");
-     
+           // var cantidad = this.getView().byId("txtCantidad");
+            ctx=this;
              // Lógica a ejecutar cuando se presiona Enter en el input del EAN
             var cantidad = this.getView().byId("txtCantidad");
-            var ruta = this.getView().byId("txtRuta");
+            var sRuta = this.getView().byId("txtRuta");
             var descripcion = this.getView().byId("lDescripcion");
+            var Ean = this.getView().byId("eanInput");
+            var ci = this.getView().byId("edtCI");
             var oModel = this.getView().getModel();
             try {
                 //this.agregarAlLog();
-                var cantidadYRuta = await this.obtenerCantidadYRuta(sValue);
+                var cantidadYRuta = await this.obtenerCantidadYRuta(sValue);                
                 var cantidadActual = oModel.getProperty("/cantidad");
                 var sEan = oModel.getProperty("/ean");
-                // Leer el valor actual de la propiedad 'cuenta'
-                var cuentaActual = oModel.getProperty("/cuenta");
-                if (cantidadYRuta.cantidad > 0 && cantidadActual == 0 && sEan == ""){
-                    cantidad.setText(cantidadYRuta.cantidad); // Establece el texto con la cantidad obtenida
-                    ruta.setText(cantidadYRuta.ruta); // Establece el texto con la ruta obtenida                    
-                    descripcion.setText(cantidadYRuta.descripcion); // Establece el texto con la descripcion
-                     // Incrementar el valor
-                     var nuevaCuenta = cuentaActual + 1;
- 
-                     // Establecer el nuevo valor en el modelo
-                     oModel.setProperty("/cantidad", cantidadYRuta.cantidad);
-                     oModel.setProperty("/cuenta", nuevaCuenta);
-                     oModel.setProperty("/ean", sValue);
-                   //  this.agregarLog();
-                }
-                else if (cantidadYRuta.cantidad > 0 && cantidadYRuta.cantidad  > cuentaActual && sEan == sValue){
-                  // Incrementar el valor
-                  var nuevaCuenta = cuentaActual + 1;
- 
-                  // Establecer el nuevo valor en el modelo
-                  oModel.setProperty("/cantidad", cantidadYRuta.cantidad);
-                  oModel.setProperty("/cuenta", nuevaCuenta);
-                }
-                else if (cantidadYRuta.cantidad > 0 && cantidadYRuta.cantidad  == cuentaActual && sEan == sValue){
-                        console.log("Error ya estan todos los productos");
-                }
-                else if(sEan != sValue){
-                    var ruta = this._findRouteByEAN(sValue);
+                if (cantidadYRuta.cantidad > 0 ){
+                    // Leer el valor actual de la propiedad 'cuenta'
+                    var cuentaActual = oModel.getProperty("/cuenta");
+                    if (cantidadYRuta.cantidad > 0 && cantidadActual == 0 && sEan == ""){
+                        //***  Se inicia el ciclo de escaneo  **********/
+                        cantidad.setText(cantidadYRuta.cantidad); // Establece el texto con la cantidad obtenida
+                        sRuta.setText(cantidadYRuta.ruta); // Establece el texto con la ruta obtenida                    
+                        descripcion.setText(cantidadYRuta.descripcion); // Establece el texto con la descripcion
+                        // Incrementar el valor
+                        var nuevaCuenta = cuentaActual + 1;
+    
+                        // Establecer el nuevo valor en el modelo
+                        oModel.setProperty("/ruta", cantidadYRuta.ruta);
+                        oModel.setProperty("/cantidad", cantidadYRuta.cantidad);
+                        oModel.setProperty("/cuenta", nuevaCuenta);
+                        oModel.setProperty("/ean", sValue);
+                        oModel.setProperty("/id", cantidadYRuta.id);
+                        // Actualizar tableData
+                        var tableData = oModel.getProperty("/tableData");
+                        // Buscar el registro correspondiente en tableData
+                        tableData.forEach(function (registro) {
+                            if (registro.Ruta === cantidadYRuta.ruta) {
+                                // Asegurar que SCAN y FALTA son números válidos
+                                registro.SCAN = parseInt(registro.SCAN, 10) || 0;
+                                registro.FALTA = parseInt(registro.FALTA, 10) || 0;
 
-                    if (ruta) {
-                        // Si se encuentra la ruta, realizar las acciones necesarias
-                        console.log("Ruta encontrada:", ruta);
-                        // Por ejemplo, puedes establecer la ruta en el modelo o realizar otras operaciones
-                        var oLocalModel = this.getView().getModel("localModel");
-                        oLocalModel.setProperty("/rutaEncontrada", ruta);
-                    } else {
-                        // Si no se encuentra la ruta, manejar el caso adecuadamente
-                        console.log("No se encontró la ruta para el EAN proporcionado.");
+                                // Incrementar SCAN y decrementar FALTA
+                                registro.SCAN += 1;
+                                registro.FALTA -= 1;
+                            }
+                        });
+                         // Establecer el array actualizado en el modelo
+                        oModel.setProperty("/tableData", tableData);
+                    //  this.agregarLog();
                     }
-                    console.log("ver si es confirmacion")
+                    else if (cantidadYRuta.cantidad > 0 && cantidadYRuta.cantidad  > cuentaActual && sEan == sValue){
+                        //******* Se recibe un EAN igual al del que inicio el ciclo, el cual aun no finalizo */
+                    // Incrementar el valor
+                    var nuevaCuenta = cuentaActual + 1;
+    
+                    // Establecer el nuevo valor en el modelo
+
+                    oModel.setProperty("/cuenta", nuevaCuenta);
+
+                     // Actualizar tableData
+                     var tableData = oModel.getProperty("/tableData");
+                     // Buscar el registro correspondiente en tableData
+                     tableData.forEach(function (registro) {
+                         if (registro.Ruta === cantidadYRuta.ruta) {
+                             // Asegurar que SCAN y FALTA son números válidos
+                             registro.SCAN = parseInt(registro.SCAN, 10) || 0;
+                             registro.FALTA = parseInt(registro.FALTA, 10) || 0;
+                            if ( registro.FALTA === 0){
+                                this.onOpenDialog("Ya estan todos los productos escaneados : "+oModel.getProperty("/cuenta") , "Confirme ingreso en la ruta :"+oModel.getProperty("/ruta")); 
+                            }
+                            else{
+                                // Incrementar SCAN y decrementar FALTA
+                                registro.SCAN += 1;
+                                registro.FALTA -= 1;
+                                //  this.agregarLog();
+                            }
+                         }
+                     });
+                      // Establecer el array actualizado en el modelo
+                     oModel.setProperty("/tableData", tableData);
+                    }
+                    else if (cantidadYRuta.cantidad > 0 && cantidadYRuta.cantidad  == cuentaActual && sEan == sValue){
+                        /********  Se recibe un EAN de un ciclo que ya esta competo */
+                            console.log("Error ya estan todos los productos");
+                            this.onOpenDialog("Ya estan todos los productos escaneados : "+oModel.getProperty("/cuenta") , "Confirme ingreso en la ruta :"+oModel.getProperty("/ruta"));
+                    }
+                    
+                    else if(sEan != cantidadYRuta.ean){
+                        /******  Se recibe un EAN que no corresponde al ciclo de escaneo actual *********
+                         *       puede tratarse de una confirmacion o un error - Se confirma en otra ruta    *
+                         ********************************************************************************/
+                        var ruta = this._findRouteByEAN(sValue);
+
+                        if (ruta) {
+                            /* Se encuentra una ruta para este EAN. **
+                                hay que ver si es la ruta que le corresponde al ciclo actual
+                            */
+                            console.log("Ruta encontrada:", ruta);
+                            if(ruta == oModel.getProperty("/ruta") && cantidadYRuta.cantidad  == cuentaActual){
+                                /** es la confirmacion al ciclo actual */
+                                // resetea valores para iniciar el nuevo ciclo                       
+                                oModel.setProperty("/ruta", 0);                         
+                                oModel.setProperty("/cantidad", 0);
+                                oModel.setProperty("/cuenta", 0);
+                                oModel.setProperty("/ean", "");
+                                
+                                   //actualiza el estado 
+                                var request = indexedDB.open("ventilado", 2);                             
+                                request.onsuccess = function(event) {
+                                    var db = event.target.result;
+                                    // Llamar a la función para actualizar el campo 'Estado'
+                                    ctx.actualizarEstado(db, cantidadYRuta.id, "Completo");
+                                };
+                                oModel.setProperty("/id", 0);
+                                cantidad.setText("");
+                                sRuta.setText("");
+                                descripcion.setText("");
+                                Ean.setValue("");
+                                ci.setText("");
+                            }
+                            else if(ruta == oModel.getProperty("/ruta") && cantidadYRuta.cantidad  > cuentaActual){
+                                console.log("Se esta confirmando en ruta correcta,", " pero no se completo la cantidad de productos")
+                                this.onOpenDialog("Falta agregar productos se escaneo = "+oModel.getProperty("/cuenta") , " y el total debe ser:"+oModel.getProperty("/cantidad"));
+                            }
+                            else if(ruta == oModel.getProperty("/ruta") && cantidadYRuta.cantidad  == cuentaActual){
+                                console.log("Se esta confirmando en ruta correcta,", " pero no se completo la cantidad de productos")
+                                this.onOpenDialog("Esta tratando de ingresar un producto de mas", "Tiene que confirmar :"+oModel.getProperty("/cantidad") , " escaneando la ruta  : "+oModel.getProperty("/ruta"));
+                            }                       
+                            else{
+                                console.log("Se esta confirmando en otra ruta");
+                                this.onOpenDialog("Se esta confirmando en una ruta incorrecta . Se debe confirmar escaneando la ruta  "+oModel.getProperty("/ruta"));
+                                
+                            }
+                        
+                        } else {
+                            // Si no se encuentra la ruta, manejar el caso adecuadamente
+                            console.log("Escaneo un producto que no correspone.");
+                            this.onOpenDialog("Escaneo un producto que no corresponde");
+                        }
+                        
+                    }
                 }
+                else if ( cantidadYRuta.cantidad==-1){
+                    this.onOpenDialog("Producto sobrante. Ya se asignaron todos los productos ", "en los destinos respectivos ");
+                }
+                else if ( cantidadYRuta.cantidad==-2){
+                    this.onOpenDialog("Error al obtener la cantidad y la ruta", "El codigo no es un producto ni una confirmacion de ruta");
+                }
+                else if ( cantidadYRuta.cantidad==-3){
+                    this.onOpenDialog("Se esta confirmando en una ruta incorrecta . Se debe confirmar escaneando la ruta  "+oModel.getProperty("/ruta"));
+                }
+                else if ( cantidadYRuta.cantidad==-4){
+                    this.onOpenDialog("Antes de confirmar una ruta tiene ","que iniciar un ciclo de carga escaneando un producto");
+                }
+                
+                
             } catch (error) {
                 console.error("Error al obtener la cantidad y la ruta:", error);
-                cantidad.setText("Error al obtener la cantidad"); // Maneja el error estableciendo un texto de error en cantidad
-                ruta.setText("Error al obtener la ruta"); // Maneja el error estableciendo un texto de error en ruta
+               // this.onOpenDialog("Error");
+               // cantidad.setText("Error al obtener la cantidad"); // Maneja el error estableciendo un texto de error en cantidad
+               // ruta.setText("Error al obtener la ruta"); // Maneja el error estableciendo un texto de error en ruta
             }
 
             var oModel = this.getView().getModel();
@@ -257,18 +412,73 @@ sap.ui.define([
             MessageToast.show("Valor ingresado: " + sValue);
 
         },
+        actualizarEstado: function (db, id, nuevoEstado) {
+            var transaction = db.transaction(["ventilado"], "readwrite");
+            var objectStore = transaction.objectStore("ventilado");
+            
+        
+            // Obtener el registro por el valor del índice "id"
+            // Crear el índice si no existe
+  //  if (!objectStore.indexNames.contains("Id")) {
+   //     objectStore.createIndex("Id", "Id", { unique: false });
+   // }
+    //var index = objectStore.index("Id");
+   
+            var getRequest = objectStore.get(id);
+        
+            getRequest.onsuccess = function(event) {
+                var data = event.target.result;
+                if (data) {
+                    // Actualizar el campo 'Estado'
+                    data.Estado = nuevoEstado;
+        
+                    // Guardar el registro actualizado
+                    var updateRequest = objectStore.put(data);
+        
+                    updateRequest.onsuccess = function(event) {
+                        console.log("El campo 'Estado' ha sido actualizado exitosamente.");
+                        // Verificar que el campo 'Estado' ha sido actualizado correctamente
+                var verifyRequest = objectStore.get(id);
+                verifyRequest.onsuccess = function(event) {
+                    var updatedData = event.target.result;
+                    console.log("Valor actualizado del campo 'Estado':", updatedData.Estado);
+                };
+                verifyRequest.onerror = function(event) {
+                    console.log("Error al verificar el campo 'Estado':", event.target.error);
+                };
+                    };
+        
+                    updateRequest.onerror = function(event) {
+                        console.log("Error al actualizar el campo 'Estado':", event.target.error);
+                    };
+                } else {
+                    console.log("No se encontró ningún registro con el Id proporcionado.");
+                }
+            };
+        
+            getRequest.onerror == function(event) {
+                console.log("Error al buscar el registro:", event.target.error);
+            };
+            transaction.oncomplete = function() {
+                console.log("Transacción completada.");
+            };
+        
+            transaction.onerror = function(event) {
+                console.log("Error en la transacción:", event.target.error);
+            };
+        },
         //   Aca se hacen los calculos para mostrar los numeros GRANDES de la pantalla
         obtenerCantidadYRuta: async function(eanInput) {
            
             try {
                 var datos = await this.onGetData(eanInput); // Realiza una sola lectura de la tabla
-                return { cantidad: datos.Cantidad, ruta: datos.Ruta, descripcion: datos.descripcion }; // Devuelve un objeto con la cantidad y la ruta
+                return { cantidad: datos.Cantidad, ruta: datos.Ruta, descripcion: datos.descripcion , id: datos.id}; // Devuelve un objeto con la cantidad y la ruta
             } catch (error) {
                // console.error("Error al obtener la cantidad y la ruta:", error);
                 return { cantidad: -1, ruta: -1 , descripcion:""}; // o cualquier otro valor predeterminado si lo prefieres
             }
         },
-
+//********* fin escaneo **************************/
 
 //*******  Funcion para descargar las etiquetas  ****** */ 
         onGeneratePDF: function () {
@@ -407,7 +617,7 @@ sap.ui.define([
            
             //Cargamos el Dialogo  
             var oView = this.getView();            
-            if (!this.byId("dialogStop")) {
+            if (!this.byId("dialogoStop")) {
              // load asynchronous XML fragment
              Fragment.load({
               id: oView.getId(),
@@ -426,7 +636,7 @@ sap.ui.define([
           // Método para manejar la confirmación del valor ingresado en el diálogo Stop
         onStopConfirm: function() {
             var stop = this.byId("stopInput");
-            var inputValue = stop.getValue();
+        //    var inputValue = stop.getValue();
 
             // Transferir el valor ingresado  a la logica
 
@@ -436,14 +646,14 @@ sap.ui.define([
         // Método para manejar el evento afterClose del diálogo
         onStopDialogClose: function(oEvent) {
             // Limpiar el campo de entrada del diálogo
-            var parcial = this.byId("stopInput");
-            parcial.setValue("");
+         //   var parcial = this.byId("stopInput");
+          //  parcial.setValue("");
             // Devolver el foco al input del EAN
            // var eanInput = this.byId("eanInput");
            // eanInput.focus();
         },
 
-//******  Llamada ejemplos alCRUD  *****************/
+/******  Llamada ejemplo al CRUD  ****************
         
         onCrudCrear: function() {
             var createData = [
@@ -468,7 +678,7 @@ sap.ui.define([
            // this.crud("BORRAR", "zprueba", "", "");
            this.crud("FI", "zprueba", "", "");
         },
-
+*/
 
 //*******  Inicio  Funciones para el CRUD  *******/  
         crud: function(operacion , tabla,oValor1, oValor2 ){
@@ -742,23 +952,12 @@ _fetchAndStoreOData: function () {
     });
 },
 
-/*onAddData: function () {
-    var transaction = this.db.transaction(["ventilado"], "readwrite");
-    var objectStore = transaction.objectStore("ventilado");
-    var requestAdd = objectStore.add({ Dni: "1234567890", Nombre: "Juan", Apellido: "Perez" });
-
-    requestAdd.onsuccess = function (event) {
-        console.log("Dato agregado con éxito.");
-    };
-
-    requestAdd.onerror = function (event) {
-        console.error("Error al agregar el dato:", event.target.errorCode);
-    };
-},*/
 
 onGetData: function (key) {
     ctx = this;
+    var result;
     var sKey = key;
+    var flag = 0;
     return new Promise(function(resolve, reject) {
         var request = indexedDB.open("ventilado", 2); // Asegúrate de usar la misma versión
 
@@ -775,43 +974,63 @@ onGetData: function (key) {
                 }
 
             var index = objectStore.index("Ean");
+            var cursorRequest = index.openCursor(IDBKeyRange.only(sKey));
+           
+          //  var getRequest = index.get(key);
 
-            var getRequest = index.get(key);
+           // getRequest.onsuccess = function(event) {
+            cursorRequest.onsuccess = function(event) {
+               // var data = event.target.result;
+               // if (data) {
+               /* result = {
+                    Cantidad: -1, 
+                    Ruta: 0,
+                    descripcion:"",
+                    id : -1
+                };*/
+                var cursor = event.target.result;
+                if (cursor) {
+                    
+                    var data = cursor.value;
+                    if (data.Estado != "Completo") { // Reemplaza "CampoDeterminado" por el nombre del campo que necesitas verificar
+                        console.log("Registro encontrado:", data);
+                        // Aquí puedes manejar el registro encontrado
+                        // Accediendo a cada campo del registro
+                        var id = data.Id;
+                        var ean = data.Ean;
+                        var fecha = data.Fecha;
+                        var transporte = data.Transporte;
+                        var entrega = data.Entrega;
+                        var nonbreDestinatario = data.NonbreDestinatario;
+                        var calle = data.Calle;
+                        var lugarDestinatario = data.LugarDestinatario;
+                        var codigoInterno = data.CodigoInterno;
+                        var descripcion = data.Descricion;
+                        var cantidadEntrega = data.CantidadEntrega;
+                        var lugarPDisp = data.LugarPDisp;
+                        var cantEscaneada = data.CantEscaneada;
+                        var preparador = data.Preparador;
+                        var estado = data.Estado;
+                        var cantidad = data.CantidadEntrega;//aca va la cantidad
+                        var ruta = data.LugarPDisp;// aca la ruta
+                            result = {
+                            Cantidad: cantidad, 
+                            Ruta: ruta,
+                            descripcion:descripcion,
+                            id : id
+                        };
 
-            getRequest.onsuccess = function(event) {
-                var data = event.target.result;
-                if (data) {
-                    console.log("Registro encontrado:", data);
-                    // Aquí puedes manejar el registro encontrado
-                     // Accediendo a cada campo del registro
-                    var id = data.Id;
-                    var ean = data.Ean;
-                    var fecha = data.Fecha;
-                    var transporte = data.Transporte;
-                    var entrega = data.Entrega;
-                    var nonbreDestinatario = data.NonbreDestinatario;
-                    var calle = data.Calle;
-                    var lugarDestinatario = data.LugarDestinatario;
-                    var codigoInterno = data.CodigoInterno;
-                    var descripcion = data.Descricion;
-                    var cantidadEntrega = data.CantidadEntrega;
-                    var lugarPDisp = data.LugarPDisp;
-                    var cantEscaneada = data.CantEscaneada;
-                    var preparador = data.Preparador;
-                    var estado = data.Estado;
-                    var cantidad = data.CantidadEntrega;//aca va la cantidad
-                    var ruta = data.LugarPDisp;// aca la ruta
-                    var result = {
-                        Cantidad: cantidad, 
-                        Ruta: ruta,
-                        descripcion:descripcion
-                    };
-
-
-
-                    resolve(result); // Resuelve la promesa con un objeto que contiene los valores de cantidad y Ruta
-                } else {
-                    console.log("No se encontró ningún registro con el EAN proporcionado.");
+                      resolve(result); // Resuelve la promesa con un objeto que contiene los valores de cantidad y Ruta
+                    
+                    } else {
+                        // Continuar con el siguiente registro
+                        flag=1;
+                        cursor.continue();
+                    }
+                    
+                } 
+                else {
+                    console.log("No se encontró Producto con el EAN proporcionado.");
                     // Busca para ver si es un Codigo de confirmacion
                     var ruta = ctx._findRouteByEAN(sKey);
 
@@ -820,21 +1039,85 @@ onGetData: function (key) {
                         console.log("Ruta encontrada:", ruta);
                         // Ver si ya se completa la cantidad escaneada 
                         var oModel = ctx.getView().getModel();
-                        if(oModel.getProperty("/cuenta")==oModel.getProperty("/cantidad")){
+                        if(ruta == oModel.getProperty("/ruta") && oModel.getProperty("/cuenta")==oModel.getProperty("/cantidad") ){
                             console.log("Confirmado");
+                            // se competo el ciclo de escaneo  de un producto, resetear variables y confirmar log
+                                result = {
+                                Cantidad: oModel.getProperty("/cantidad"), 
+                                Ruta: oModel.getProperty("/ruta"),
+                                descripcion:oModel.getProperty("/descripcion"),
+                                id : oModel.getProperty("/id")
+                            };
+        
                         }
-                        else{
+                        else if(ruta == oModel.getProperty("/ruta") && oModel.getProperty("/cuenta")< oModel.getProperty("/cantidad") ){
                             console.log("falta escanear");
+                            //  Abrir Fragment
+                            result = {
+                                Cantidad: oModel.getProperty("/cantidad"), 
+                                Ruta: oModel.getProperty("/ruta"),
+                                descripcion:oModel.getProperty("/descripcion"),
+                                id : oModel.getProperty("/id")
+                            };
+        
+                           // ctx.onOpenDialog("Falta agregar productos Scan = "+oModel.getProperty("/cuenta") , "el total debe ser:"+oModel.getProperty("/cantidad"));
                         }
+                        
+                        else if(ruta != oModel.getProperty("/ruta") ){   
+                            if (ruta !=0 && oModel.getProperty("/cantidad")>0) {                                                    
+                                console.log("Confirmacion en otra ruta");
+                                //  Abrir Fragment
+                                result = {
+                                    Cantidad: -3, 
+                                    Ruta: oModel.getProperty("/ruta"),
+                                    descripcion:oModel.getProperty("/descripcion"),
+                                    id : oModel.getProperty("/id")
+                                };
+                            }
+                            else if (ruta != 0 && oModel.getProperty("/cantidad")==0){
+                                console.log("Antes de confirmar una ruta tiene ","que iniciar un ciclo de carga escaneando un producto")
+                                result = {
+                                    Cantidad: -4, 
+                                    Ruta: 0,
+                                    descripcion:"",
+                                    id : 0
+                                };
+                            }
+            
+                           // ctx.onOpenDialog("Error en la ruta de destino: "+ ruta , "debe confirmarse en ruta :"+oModel.getProperty("/ruta"));
+                            
+                        }
+                        
                        
                     } else {
                         // Si no se encuentra la ruta, manejar el caso adecuadamente
-                        console.log("No se encontró la ruta para el EAN proporcionado.");
+                        console.log("No es un producto ni un codigo de confirmacion");
+                        // abrir un fragment
+                        if (flag==1)
+                            result = {
+                                Cantidad: -1, 
+                                Ruta: 0,
+                                descripcion:"",
+                                id : 0
+                            };
+                        else{
+                            result = {
+                                Cantidad: -2, 
+                                Ruta: 0,
+                                descripcion:"",
+                                id : 0
+                            };
+                        }
+    
+                        // ctx.onOpenDialog("Error : No es un producto ni un codigo de confirmacion");
+
                     }
+                    resolve(result);
                 }
+                
             };
 
-            getRequest.onerror = function(event) {
+            cursorRequest.onerror = function(event) {
                 console.log("Error al buscar el registro:", event.target.error);
             };
         };
@@ -901,6 +1184,7 @@ onGetData2: function (key) {
                     resolve(result); // Resuelve la promesa con un objeto que contiene los valores de cantidad y Ruta
                 } else {
                     console.log("No se encontró ningún registro con el Codigo interno proporcionado.");
+                   
                 }
             };
 
@@ -916,6 +1200,62 @@ onGetData2: function (key) {
 },
 
 
+
+ //***** Método para abrir el diálogo en caso de errores *************/
+ onOpenDialog: function(msg1, msg2, msg3) {
+           
+    //Cargamos el Dialogo
+     var oView = this.getView();            
+     if (!this.byId("codeDialog")) {
+      // load asynchronous XML fragment
+      Fragment.load({
+       id: oView.getId(),
+       name: "ventilado.ventilado.view.CodeDialog",// todo el camino incluido el nombre del XML
+       controller: this
+     }).then(function (oDialog) {
+     // connect dialog to the root view 
+     //of this component (models, lifecycle)
+         oView.addDependent(oDialog);
+         oDialog.open();
+        // Accedemos a los labels dentro del VBox
+        var aContent = oDialog.getContent()[0].getItems(); // Asumimos que VBox es el primer y único contenido del diálogo
+
+        if (aContent && aContent.length >= 3) {
+            aContent[0].setText(msg1); // Primer Label
+            aContent[1].setText(msg2); // Segundo Label
+            aContent[2].setText(msg3); // Tercer Label
+        } 
+         
+        });
+      } else {
+            var oDialog =this.byId("codeDialog");
+           
+            // Accedemos a los labels dentro del VBox
+            var aContent = oDialog.getContent()[0].getItems(); // Asumimos que VBox es el primer y único contenido del diálogo
+
+            if (aContent && aContent.length >= 3) {
+                aContent[0].setText(msg1); // Primer Label
+                aContent[1].setText(msg2); // Segundo Label
+                aContent[2].setText(msg3); // Tercer Label
+            } 
+            oDialog.open();
+         
+        }
+ },
+      
+ // Método para manejar la confirmación del valor ingresado en el diálogo del código interno
+ onCodeConfirm: async function() {
+     this.byId("codeDialog").close();
+ },
+
+ // Método para manejar el evento afterClose del diálogo
+ onCodeInputDialogClose: function(oEvent) {
+      
+         // Devolver el foco al input del EAN
+         var eanInput = this.byId("eanInput");
+         eanInput.focus();
+     
+ },
 //////
 
 onDeleteData: function () {
