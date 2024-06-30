@@ -11,23 +11,87 @@ sap.ui.define([
 ], function (Controller, MessageToast, PDFViewer,Fragment,JSONModel,ODataModel,Filter,FilterOperator) {
     "use strict";
     var ctx= this;  // Variabl eglobal en el controlador para guardar el contexto
-    return Controller.extend("ventilado.ventilado.controller.Scan", {
+    return Controller.extend("ventilado.ventilado.controller.Scan2", {
          
         onInit: function () {
-            this._initDatabase();
+            window.onbeforeunload = function() {
+                return "¿Estás seguro de que deseas salir de esta página?";
+            };
+           // this._initDatabase();
             this._checkNetworkStatus();  // funcion para que el navegador controle la conexion a internet
-            this.obtenerYProcesarDatos();           
+   //         this.obtenerYProcesarDatos(); //Obtiene los datos de la Base local agrupa x Ruta y arma  la tabla de avance           
             // Crear un modelo local para almacenar los datos
-            var oLocalModel = new sap.ui.model.json.JSONModel({
-                codConfirmacionData: []
-            });
-            this.getView().setModel(oLocalModel, "localModel");
-    
-            // Llamar a la función para leer los datos del backend
-            this._fetchCodConfirmacionData();                   
+   //         var oLocalModel = new sap.ui.model.json.JSONModel({
+   //             codConfirmacionData: []
+   //         });
+            this._fetchCodConfirmacionData(); // Llamar a la función para leer los Codigos de confirmacion de ruta del backend                  
+            
+   //         this.getView().setModel(oLocalModel, "localModel");  
+            
+            
+            var oModel = new sap.ui.model.json.JSONModel();
+    this.getView().setModel(oModel);
+    this.obtenerYProcesarDatos();
             
         },
-        obtenerDatosDeIndexedDB: function () {
+
+/****** Inicio: Obtiene los datos de la Base local agrupa x Ruta y arma  la tabla de avance  */
+        obtenerYProcesarDatos: async function () {
+            try {
+                let datos = await this.obtenerDatosDeIndexedDB();
+                let resultado = this.procesarDatos(datos);
+        
+                // Nombres de las columnas
+                var columnNames = ["Ruta", "TOT", "SCAN", "FALTA", "Cub TEO", "C Real", "Pa"];
+        
+                // Mapear arrayResultado a la estructura de tableDataArray
+                var tableDataArray = resultado.map((registro) => {
+                    var nuevoRegistro = {};
+                    columnNames.forEach((column) => {
+                        nuevoRegistro[column] = registro[column] || "";
+                    });
+                    return nuevoRegistro;
+                });
+        
+                // Actualizar el modelo con tableDataArray
+                var oGlobalModel = this.getOwnerComponent().getModel("globalModel");
+           /*     var oModel = new sap.ui.model.json.JSONModel({
+                    isStarted:      false,   // verdadero si se pulso el botón START
+                    isArrowVisible: false,   // bandera para mostrar la flecha de la pantalla de escaneo
+                    tableData:      tableDataArray, // tabla para registrar el avance
+                    puesto:         "Estación de trabajo Nro: " + oGlobalModel.getData().puesto,
+                    transporte:     "Reparto: " + oGlobalModel.getData().reparto,
+                    cuenta:         0,
+                    cantidad:       0,
+                    ruta:           0,
+                    ean:            "",
+                    eanRuta:        "",
+                    id : 0,
+                    codConfirmacionData: []
+                    
+                });*/
+                var oModel = this.getView().getModel(); // Obtener el modelo de la vista
+                oModel.setData({
+                    isStarted: false,
+                    isArrowVisible: false,
+                    tableData: tableDataArray,
+                    puesto: "Estación de trabajo Nro: " + oGlobalModel.getData().puesto,
+                    transporte: "Reparto: " + oGlobalModel.getData().reparto,
+                    cuenta: 0,
+                    cantidad: 0,
+                    ruta: 0,
+                    ean: "",
+                    eanRuta: "",
+                    id: 0
+                });
+                this.getView().setModel(oModel);
+        
+                console.log(tableDataArray);
+            } catch (error) {
+                console.log("Error:", error);
+            }
+          },
+          obtenerDatosDeIndexedDB: function () {
             return new Promise((resolve, reject) => {
               let request = indexedDB.open("ventilado",2);
           
@@ -54,67 +118,33 @@ sap.ui.define([
               };
             });
           },
-        obtenerYProcesarDatos: async function () {
-            try {
-                let datos = await this.obtenerDatosDeIndexedDB();
-                let resultado = this.procesarDatos(datos);
-        
-                // Nombres de las columnas
-                var columnNames = ["Ruta", "TOT", "SCAN", "FALTA", "Cub TEO", "C Real", "Pa"];
-        
-                // Mapear arrayResultado a la estructura de tableDataArray
-                var tableDataArray = resultado.map((registro) => {
-                    var nuevoRegistro = {};
-                    columnNames.forEach((column) => {
-                        nuevoRegistro[column] = registro[column] || "";
-                    });
-                    return nuevoRegistro;
-                });
-        
-                // Actualizar el modelo con tableDataArray
-                var oGlobalModel = this.getOwnerComponent().getModel("globalModel");
-                var oModel = new sap.ui.model.json.JSONModel({
-                    isStarted:      false,   // verdadero si se pulso el botón START
-                    isArrowVisible: false,   // bandera para mostrar la flecha de la pantalla de escaneo
-                    tableData:      tableDataArray, // tabla para registrar el avance
-                    puesto:         "Estación de trabajo Nro: " + oGlobalModel.getData().puesto,
-                    transporte:     "Reparto: " + oGlobalModel.getData().reparto,
-                    cuenta:         0,
-                    cantidad:       0,
-                    ruta:           0,
-                    ean:            "",
-                    id : 0
-                });
-                this.getView().setModel(oModel);
-        
-                console.log(tableDataArray);
-            } catch (error) {
-                console.log("Error:", error);
-            }
-          },
+
         procesarDatos: function(datos) {
             let resultado = {};            
             datos.forEach((registro) => {
                 let ruta = registro.LugarPDisp;
-                let cantidad = registro.CantidadEntrega;            
+                let cantidad = registro.CantidadEntrega; 
+                let sCantEscaneada = registro.CantEscaneada
+;           
                 if (!resultado[ruta]) {
                     // Inicializa el objeto de la ruta si no existe
                     resultado[ruta] = {
                         "Ruta": ruta,
                         "TOT": 0,
-                        "SCAN": 0, // Esto es un ejemplo, ajusta según tus necesidades
-                        "FALTA": 0, // Esto es un ejemplo, ajusta según tus necesidades
-                        "Cub TEO": 0, // Esto es un ejemplo, ajusta según tus necesidades
-                        "C Real": 0, // Esto es un ejemplo, ajusta según tus necesidades
-                        "Pa": 0, // Esto es un ejemplo, ajusta según tus necesidades
-                        fecha: registro.fecha,  //Suponiendo que la fecha es la misma para todos los registros de la misma ruta
-                        transportista: registro.transportista  // Suponiendo que el transportista es el mismo para todos los registros de la misma ruta
+                        "SCAN": 0, 
+                        "FALTA": 0, 
+                        "Cub TEO": 0, 
+                        "C Real": 0, 
+                        "Pa": 0, 
+                      //  fecha: registro.fecha,  //Suponiendo que la fecha es la misma para todos los registros de la misma ruta
+                      //  transportista: registro.transportista  // Suponiendo que el transportista es el mismo para todos los registros de la misma ruta
                     };
                 }
 
                 // Suma la cantidad al total
                 resultado[ruta]["TOT"] += cantidad;
                 resultado[ruta]["FALTA"] += cantidad;
+                resultado[ruta]["SCAN"] = resultado[ruta]["SCAN"]+sCantEscaneada;
                 // Aquí deberías agregar lógica para calcular SCAN, FALTA, Cub TEO, C Real, Pa
             });
             
@@ -123,54 +153,10 @@ sap.ui.define([
             
             return arrayResultado;
         },
+/****** Fin: Obtiene los datos de la Base local agrupa x Ruta y arma  la tabla de avance  */        
 
 
-
-
-
-         
-
-        _findRouteByEAN: function(ean) {
-            var oLocalModel = this.getView().getModel("localModel");
-            var aCodConfirmacionData = oLocalModel.getProperty("/codConfirmacionData");
-        
-            // Buscar el EAN en el array de datos
-            var foundItem = aCodConfirmacionData.find(function(item) {
-                return item.Ean === ean;
-            });
-        
-            if (foundItem) {
-                return foundItem.Ruta;
-            } else {
-                console.log("EAN no encontrado.");
-                return null;
-            }
-        },
-        _fetchCodConfirmacionData: function() {
-            var oModel = new sap.ui.model.odata.v2.ODataModel("/sap/opu/odata/sap/ZVENTILADO_SRV/");
-            
-            oModel.read("/CodConfirmacionSet", {
-                success: function (oData) {
-                    var oLocalModel = this.getView().getModel("localModel");
-        
-                    // Verificar si oData.results es un array
-                    if (Array.isArray(oData.results)) {
-                        // Si es un array, guardar todos los items en el modelo local
-                        oLocalModel.setProperty("/codConfirmacionData", oData.results);
-                    } else {
-                        // Si no es un array, manejar el único item directamente
-                        var item = oData.results;
-                        oLocalModel.setProperty("/codConfirmacionData", [item]);
-                    }
-                    console.log("Datos copiados con éxito.");
-                }.bind(this),
-                error: function (oError) {
-                    console.error("Error al leer datos del servicio OData:", oError);
-                }
-            });
-        },
-
-       /** Inicio : Rutinas que se activan cuando se competan la cantidad de cubetas reales   */
+/***** Inicio : Rutinas que se activan cuando se competan la cantidad de cubetas reales   */
         onInputChange1: function(oEvent) {  
             // Obtener el valor del input modificado
             var newValue = oEvent.getParameter("value");
@@ -199,7 +185,7 @@ sap.ui.define([
             oModel.setProperty(oContext.getPath() + "/Pa", newValue);
             
         },
-/** Fin : Rutinas que se activan cuando se competan la cantidad de cubetas reales   */
+/** Fin : Rutinas que se activan cuando se competan la cantidad de cubetas reales  ********/
 
         _checkNetworkStatus: function () {
             if (navigator.onLine) {
@@ -213,8 +199,7 @@ sap.ui.define([
             this._checkNetworkStatus();
         },
 
-        /////////// Arranca el escaneo  //////////////////////////////////////////
-
+/****** Inicio: Arranca proceso de  escaneo  *****************************************  ***/
 
         onStartPress:function (){
 
@@ -241,177 +226,168 @@ sap.ui.define([
             // Ejecutar la función deseada
             this.handleEanEnter(sValue);
         },
-
         handleEanEnter: async function (sValue) {
-             // Lógica a ejecutar cuando se presiona Enter en el input del EAN
-           // var cantidad = this.getView().byId("txtCantidad");
-            ctx=this;
-             // Lógica a ejecutar cuando se presiona Enter en el input del EAN
-            var cantidad = this.getView().byId("txtCantidad");
-            var sRuta = this.getView().byId("txtRuta");
-            var descripcion = this.getView().byId("lDescripcion");
-            var Ean = this.getView().byId("eanInput");
-            var ci = this.getView().byId("edtCI");
-            var oModel = this.getView().getModel();
-            try {
-                //this.agregarAlLog();
-                var cantidadYRuta = await this.obtenerCantidadYRuta(sValue);                
-                var cantidadActual = oModel.getProperty("/cantidad");
-                var sEan = oModel.getProperty("/ean");
-                if (cantidadYRuta.cantidad > 0 ){
-                    // Leer el valor actual de la propiedad 'cuenta'
-                    var cuentaActual = oModel.getProperty("/cuenta");
-                    if (cantidadYRuta.cantidad > 0 && cantidadActual == 0 && sEan == ""){
-                        //***  Se inicia el ciclo de escaneo  **********/
-                        cantidad.setText(cantidadYRuta.cantidad); // Establece el texto con la cantidad obtenida
-                        sRuta.setText(cantidadYRuta.ruta); // Establece el texto con la ruta obtenida                    
-                        descripcion.setText(cantidadYRuta.descripcion); // Establece el texto con la descripcion
-                        // Incrementar el valor
-                        var nuevaCuenta = cuentaActual + 1;
-    
-                        // Establecer el nuevo valor en el modelo
+            // Lógica a ejecutar cuando se presiona Enter en el input del EAN
+          // var cantidad = this.getView().byId("txtCantidad");
+           ctx=this;
+            // Lógica a ejecutar cuando se presiona Enter en el input del EAN
+           var cantidad = this.getView().byId("txtCantidad");
+           var sRuta = this.getView().byId("txtRuta");
+           var descripcion = this.getView().byId("lDescripcion");
+           var Ean = this.getView().byId("eanInput");
+           var ci = this.getView().byId("edtCI");
+           var oModel = this.getView().getModel();
+           var cantidadYRuta;
+           if (oModel.getProperty("/ruta")==0){
+                // Entra un codigo y el modelo esta vacio
+                try {
+                    /** vemos si el EAN es un producto */ 
+                    cantidadYRuta = await this.obtenerCantidadYRuta(sValue,1);                
+                    if (cantidadYRuta.cantidad > 0 ){
+                        console.log("es un producto");
+                        // Actualiza el modelo
                         oModel.setProperty("/ruta", cantidadYRuta.ruta);
-                        oModel.setProperty("/cantidad", cantidadYRuta.cantidad);
-                        oModel.setProperty("/cuenta", nuevaCuenta);
+                        oModel.setProperty("/cantidad", cantidadYRuta.cantidad);               
                         oModel.setProperty("/ean", sValue);
                         oModel.setProperty("/id", cantidadYRuta.id);
-                        // Actualizar tableData
-                        var tableData = oModel.getProperty("/tableData");
-                        // Buscar el registro correspondiente en tableData
-                        tableData.forEach(function (registro) {
-                            if (registro.Ruta === cantidadYRuta.ruta) {
-                                // Asegurar que SCAN y FALTA son números válidos
-                                registro.SCAN = parseInt(registro.SCAN, 10) || 0;
-                                registro.FALTA = parseInt(registro.FALTA, 10) || 0;
-
-                                // Incrementar SCAN y decrementar FALTA
-                                registro.SCAN += 1;
-                                registro.FALTA -= 1;
-                            }
-                        });
-                         // Establecer el array actualizado en el modelo
-                        oModel.setProperty("/tableData", tableData);
-                    //  this.agregarLog();
+                         // Actualiza la pantalla
+                        cantidad.setText(cantidadYRuta.cantidad);
+                        sRuta.setText(cantidadYRuta.ruta);
+                        descripcion.setText(cantidadYRuta.descripcion);
+                        Ean.setValue(cantidadYRuta.ean);
+                        ci.setText(cantidadYRuta.ci);
                     }
-                    else if (cantidadYRuta.cantidad > 0 && cantidadYRuta.cantidad  > cuentaActual && sEan == sValue){
-                        //******* Se recibe un EAN igual al del que inicio el ciclo, el cual aun no finalizo */
-                    // Incrementar el valor
-                    var nuevaCuenta = cuentaActual + 1;
-    
-                    // Establecer el nuevo valor en el modelo
-
-                    oModel.setProperty("/cuenta", nuevaCuenta);
-
-                     // Actualizar tableData
-                     var tableData = oModel.getProperty("/tableData");
-                     // Buscar el registro correspondiente en tableData
-                     tableData.forEach(function (registro) {
-                         if (registro.Ruta === cantidadYRuta.ruta) {
-                             // Asegurar que SCAN y FALTA son números válidos
-                             registro.SCAN = parseInt(registro.SCAN, 10) || 0;
-                             registro.FALTA = parseInt(registro.FALTA, 10) || 0;
-                            if ( registro.FALTA === 0){
-                                this.onOpenDialog("Ya estan todos los productos escaneados : "+oModel.getProperty("/cuenta") , "Confirme ingreso en la ruta :"+oModel.getProperty("/ruta")); 
-                            }
-                            else{
-                                // Incrementar SCAN y decrementar FALTA
-                                registro.SCAN += 1;
-                                registro.FALTA -= 1;
-                                //  this.agregarLog();
-                            }
-                         }
-                     });
-                      // Establecer el array actualizado en el modelo
-                     oModel.setProperty("/tableData", tableData);
-                    }
-                    else if (cantidadYRuta.cantidad > 0 && cantidadYRuta.cantidad  == cuentaActual && sEan == sValue){
-                        /********  Se recibe un EAN de un ciclo que ya esta competo */
-                            console.log("Error ya estan todos los productos");
-                            this.onOpenDialog("Ya estan todos los productos escaneados : "+oModel.getProperty("/cuenta") , "Confirme ingreso en la ruta :"+oModel.getProperty("/ruta"));
-                    }
-                    
-                    else if(sEan != cantidadYRuta.ean){
-                        /******  Se recibe un EAN que no corresponde al ciclo de escaneo actual *********
-                         *       puede tratarse de una confirmacion o un error - Se confirma en otra ruta    *
-                         ********************************************************************************/
-                        var ruta = this._findRouteByEAN(sValue);
-
-                        if (ruta) {
-                            /* Se encuentra una ruta para este EAN. **
-                                hay que ver si es la ruta que le corresponde al ciclo actual
-                            */
-                            console.log("Ruta encontrada:", ruta);
-                            if(ruta == oModel.getProperty("/ruta") && cantidadYRuta.cantidad  == cuentaActual){
-                                /** es la confirmacion al ciclo actual */
-                                // resetea valores para iniciar el nuevo ciclo                       
-                                oModel.setProperty("/ruta", 0);                         
-                                oModel.setProperty("/cantidad", 0);
-                                oModel.setProperty("/cuenta", 0);
-                                oModel.setProperty("/ean", "");
-                                
-                                   //actualiza el estado 
-                                var request = indexedDB.open("ventilado", 2);                             
-                                request.onsuccess = function(event) {
-                                    var db = event.target.result;
-                                    // Llamar a la función para actualizar el campo 'Estado'
-                                    ctx.actualizarEstado(db, cantidadYRuta.id, "Completo");
-                                };
-                                oModel.setProperty("/id", 0);
-                                cantidad.setText("");
-                                sRuta.setText("");
-                                descripcion.setText("");
-                                Ean.setValue("");
-                                ci.setText("");
-                            }
-                            else if(ruta == oModel.getProperty("/ruta") && cantidadYRuta.cantidad  > cuentaActual){
-                                console.log("Se esta confirmando en ruta correcta,", " pero no se completo la cantidad de productos")
-                                this.onOpenDialog("Falta agregar productos se escaneo = "+oModel.getProperty("/cuenta") , " y el total debe ser:"+oModel.getProperty("/cantidad"));
-                            }
-                            else if(ruta == oModel.getProperty("/ruta") && cantidadYRuta.cantidad  == cuentaActual){
-                                console.log("Se esta confirmando en ruta correcta,", " pero no se completo la cantidad de productos")
-                                this.onOpenDialog("Esta tratando de ingresar un producto de mas", "Tiene que confirmar :"+oModel.getProperty("/cantidad") , " escaneando la ruta  : "+oModel.getProperty("/ruta"));
-                            }                       
-                            else{
-                                console.log("Se esta confirmando en otra ruta");
-                                this.onOpenDialog("Se esta confirmando en una ruta incorrecta . Se debe confirmar escaneando la ruta  "+oModel.getProperty("/ruta"));
-                                
-                            }
-                        
-                        } else {
-                            // Si no se encuentra la ruta, manejar el caso adecuadamente
-                            console.log("Escaneo un producto que no correspone.");
-                            this.onOpenDialog("Escaneo un producto que no corresponde");
+                    else {
+                        cantidadYRuta = await this.obtenerCantidadYRuta(sValue,2); // no es unproducto verifica si es un CI
+                        if (cantidadYRuta.cantidad > 0 ){
+                            // Actualiza el modelo
+                            console.log("es un ci");
+                            oModel.setProperty("/ruta", cantidadYRuta.ruta);
+                            oModel.setProperty("/cantidad", cantidadYRuta.cantidad);               
+                            oModel.setProperty("/ean", cantidadYRuta.ean);
+                            oModel.setProperty("/id", cantidadYRuta.id);
+                            oModel.setProperty("/ci", cantidadYRuta.ci);
+                            // Actualiza la pantalla
+                            cantidad.setText(cantidadYRuta.cantidad);
+                            sRuta.setText(cantidadYRuta.ruta);
+                            descripcion.setText(cantidadYRuta.descripcion);
+                            Ean.setValue(cantidadYRuta.ean);
+                            ci.setText(cantidadYRuta.ci);
                         }
-                        
-                    }
-                }
-                else if ( cantidadYRuta.cantidad==-1){
-                    this.onOpenDialog("Producto sobrante. Ya se asignaron todos los productos ", "en los destinos respectivos ");
-                }
-                else if ( cantidadYRuta.cantidad==-2){
-                    this.onOpenDialog("Error al obtener la cantidad y la ruta", "El codigo no es un producto ni una confirmacion de ruta");
-                }
-                else if ( cantidadYRuta.cantidad==-3){
-                    this.onOpenDialog("Se esta confirmando en una ruta incorrecta . Se debe confirmar escaneando la ruta  "+oModel.getProperty("/ruta"));
-                }
-                else if ( cantidadYRuta.cantidad==-4){
-                    this.onOpenDialog("Antes de confirmar una ruta tiene ","que iniciar un ciclo de carga escaneando un producto");
-                }
-                
-                
-            } catch (error) {
-                console.error("Error al obtener la cantidad y la ruta:", error);
-               // this.onOpenDialog("Error");
-               // cantidad.setText("Error al obtener la cantidad"); // Maneja el error estableciendo un texto de error en cantidad
-               // ruta.setText("Error al obtener la ruta"); // Maneja el error estableciendo un texto de error en ruta
-            }
+                        else{ // no es ni producto ni CI, comprobar si es un codigo de confirmacion                           
+                            if(cantidadYRuta.cantidad==-2){
+                                console.log(" Error: Producto sobrante");
+                                this.onOpenDialog(" Error : Producto sobrante");
+                            }
+                            else if (cantidadYRuta.cantidad==-1){
+                                console.log(" Error no se conoce el valor ingresado");
+                                this.onOpenDialog(" Error : Error no se conoce el valor ingresado");
+                            }                            
+                        }
 
+                    }
+                } catch (error) {
+                    console.error("Error al obtener la cantidad y la ruta:", error);               
+                }
+            }
+            else{// entro un codigo y el modelo no esta vacio, tiene que entrar un codigo de confirmacion
+                var ruta = this._findRouteByEAN(sValue);
+                if (ruta){
+                    console.log("es una confirmacion")
+                    // es la confirmacion al ciclo actual
+                    // resetea valores para iniciar el nuevo ciclo  
+                    var scant= oModel.getProperty("/cantidad");
+                    if (ruta ==oModel.getProperty("/ruta"))  {                   
+                        oModel.setProperty("/ruta", 0);                         
+                        oModel.setProperty("/cantidad", 0);                               
+                        oModel.setProperty("/ean", "");
+                        oModel.setProperty("/ci", "");
+                        oModel.setProperty("/descripcion", "");
+                        //actualiza el estado 
+                        var request = indexedDB.open("ventilado", 2);  
+                        var id=  oModel.getProperty("/id");                         
+                        request.onsuccess = function(event) {
+                            var db = event.target.result;
+                            // Llamar a la función para actualizar el campo 'Estado'
+                            ctx.actualizarEstado(db, id, "Completo");
+                        };
+                        oModel.setProperty("/id", 0);                               
+                        cantidad.setText("");
+                        sRuta.setText("");
+                        descripcion.setText("");
+                        Ean.setValue("");
+                        ci.setText(""); 
+                        // Actualizar tableData
+                       var tableData = oModel.getProperty("/tableData");
+                       // Buscar el registro correspondiente en tableData
+                       tableData.forEach(function (registro) {
+                           if (registro.Ruta === ruta) {                        
+                               registro.SCAN = registro.SCAN + scant;
+                               registro.FALTA = registro.FALTA - scant;
+                           }
+                       });
+                        // Establecer el array actualizado en el modelo
+                       oModel.setProperty("/tableData", tableData);
+                    }
+                    else{
+                        this.onOpenDialog(" Error : esta confirmando en la ruta equivocada","tiene que hacelo en la ruta"+ oModel.getProperty("/ruta"));
+                    } 
+                }
+                else{                   
+                    this.onOpenDialog(" Error : tiene que ingresar un codigo de confirmacion de ruta");                    
+                }
+            }
             var oModel = this.getView().getModel();
             oModel.setProperty("/isArrowVisible", true);
             var descripcion = this.getView().byId("lDescripcion");
             MessageToast.show("Valor ingresado: " + sValue);
+ 
+        },  
+              
+    
+       /***    /** Encuentra la ruta a partir del EAN  */
+       _findRouteByEAN: function(ean) {
+        var oLocalModel = this.getView().getModel();
+        var aCodConfirmacionData = oLocalModel.getProperty("/codConfirmacionData");
+    
+        // Buscar el EAN en el array de datos
+        var foundItem = aCodConfirmacionData.find(function(item) {
+            return item.Ean === ean;
+        });
+    
+        if (foundItem) {
+            return foundItem.Ruta;
+        } else {
+            console.log("EAN no encontrado.");
+            return null;
+        }
+    },
 
-        },
+    /** Lee del backend los codigos EAN de las rutas y los pasa a un array local */
+    _fetchCodConfirmacionData: function() {
+        var oModel = new sap.ui.model.odata.v2.ODataModel("/sap/opu/odata/sap/ZVENTILADO_SRV/");
+        
+        oModel.read("/CodConfirmacionSet", {
+            success: function (oData) {
+               // var oLocalModel = this.getView().getModel("localModel");
+                var oLocalModel = this.getView().getModel();
+                // Verificar si oData.results es un array
+                if (Array.isArray(oData.results)) {
+                    // Si es un array, guardar todos los items en el modelo local
+                    oLocalModel.setProperty("/codConfirmacionData", oData.results);// guarda los codigos en el modelo local
+                } else {
+                    // Si no es un array, manejar el único item directamente
+                    var item = oData.results;
+                    oLocalModel.setProperty("/codConfirmacionData", [item]);// guarda los codigos en el modelo local
+                }
+                console.log("Datos copiados con éxito.");
+            }.bind(this),
+            error: function (oError) {
+                console.error("Error al leer datos del servicio OData:", oError);
+            }
+        });
+    },
+
         actualizarEstado: function (db, id, nuevoEstado) {
 
             var transaction = db.transaction(["ventilado"], "readwrite");
@@ -450,16 +426,18 @@ sap.ui.define([
            
         },
         //   Aca se hacen los calculos para mostrar los numeros GRANDES de la pantalla
-        obtenerCantidadYRuta: async function(eanInput) {
+        obtenerCantidadYRuta: async function(eanInput, busqueda) {
            
             try {
-                var datos = await this.onGetData(eanInput); // Realiza una sola lectura de la tabla
-                return { cantidad: datos.Cantidad, ruta: datos.Ruta, descripcion: datos.descripcion , id: datos.id}; // Devuelve un objeto con la cantidad y la ruta
+                var datos = await this.onGetData(eanInput , busqueda ); // Realiza una sola lectura de la tabla
+                return { cantidad: datos.Cantidad, ruta: datos.Ruta, descripcion: datos.descripcion , id: datos.id, ean: datos.ean, ci: datos.ci}; // Devuelve un objeto con la cantidad y la ruta
             } catch (error) {
                // console.error("Error al obtener la cantidad y la ruta:", error);
-                return { cantidad: -1, ruta: -1 , descripcion:""}; // o cualquier otro valor predeterminado si lo prefieres
+                return { cantidad: -3, ruta: -1 , descripcion:""}; // o cualquier otro valor predeterminado si lo prefieres
             }
         },
+
+
 //********* fin escaneo **************************/
 
 //*******  Funcion para descargar las etiquetas  ****** */ 
@@ -843,7 +821,7 @@ deleteRecord(dniToDelete, onSuccessFunction, onErrorFunction, "additionalParamet
 //******* Fin  Funciones para el CRUD  *******/   
      
 /////////   Funciones  base offline
-_initDatabase: function () {
+/*_initDatabase: function () {
     var dbName = "ventiladoLocal";
 
     // Abrir una conexión a la base de datos para asegurarte de que esté cerrada
@@ -893,14 +871,7 @@ _initDatabase: function () {
          objectStore.createIndex("Entrega","Entrega", { unique: false });
         objectStore.createIndex("Nonbre_destinatario","Nonbre_destinatario", { unique: false });
          objectStore.createIndex("Calle","Calle", { unique: false });
-         /* objectStore.createIndex("Lugar_destinatario","Lugar_destinatario"
-         objectStore.createIndex("Codigo_interno","Codigo_interno"
-         objectStore.createIndex("Descricion","Descricion"
-         objectStore.createIndex("Cantidad_entrega","Cantidad_entrega"
-         objectStore.createIndex("Lugar_p_disp","Lugar_p_disp"
-         objectStore.createIndex("Cant_escaneada","Cant_escaneada"
-         objectStore.createIndex("Ean","Ean"
-         objectStore.createIndex("Preparador"Preparador"*/
+    
 
 
         console.log("Almacén de objetos creado con ,:éxito.");
@@ -911,7 +882,7 @@ _initDatabase: function () {
         console.log("Base de datos abierta con éxito.");
         this._fetchAndStoreOData(); //Luego de abrir la base se guardan los datos
     }.bind(this);
-},
+},*/
 
 _fetchAndStoreOData: function () {
     var oModel = new ODataModel("/sap/opu/odata/sap/ZVENTILADO_SRV/");
@@ -934,172 +905,119 @@ _fetchAndStoreOData: function () {
 },
 
 
-onGetData: function (key) {
+onGetData: function (key,busqueda) { // busqueda =1 busca si es un producto 
+                                     // busqueda =2 busca si es un codigo interno
     ctx = this;
     var result;
     var sKey = key;
     var flag = 0;
     return new Promise(function(resolve, reject) {
+        var index;
         var request = indexedDB.open("ventilado", 2); // Asegúrate de usar la misma versión
 
         request.onsuccess = function(event) {
             var db = event.target.result;
             var transaction = db.transaction(["ventilado"], "readonly");
             var objectStore = transaction.objectStore("ventilado");
-         
-            // Verificar si el índice "Ean" existe          
-                if (!objectStore.indexNames.contains("Ean")) {
-                    console.error("El índice 'Ean' no se encontró.");
+            if (busqueda == 1){
+                // Verificar si el índice "Ean" existe          
+                    if (!objectStore.indexNames.contains("Ean")) {
+                        console.error("El índice 'Ean' no se encontró.");
+                        return;
+                    }
+                    index = objectStore.index("Ean");
+            }
+            else{
+                // Verificar si el índice "Codigo_interno" existe          
+                if (!objectStore.indexNames.contains("Codigo_interno")) {
+                    console.error("El índice 'Codigo_interno' no se encontró.");
                     return;
                 }
-
-            var index = objectStore.index("Ean");
-            var cursorRequest = index.openCursor(IDBKeyRange.only(sKey));
-           
+                index = objectStore.index("Codigo_interno");
+            }           
+            var cursorRequest = index.openCursor(IDBKeyRange.only(sKey));           
             cursorRequest.onsuccess = function(event) {           
                 var cursor = event.target.result;
                 if (cursor) {
                     
                     var data = cursor.value;
-                    if (data.Estado != "Completo") { 
+                    if (data.Estado != "Completo") { // busca una linea que no este procesada
                         console.log("Registro encontrado:", data);
-                        // Aquí puedes manejar el registro encontrado
+                        // Aquí se puede manejar el registro encontrado
                         // Accediendo a cada campo del registro
                         var id = data.Id;
-                        var ean = data.Ean;
-                        var fecha = data.Fecha;
-                        var transporte = data.Transporte;
-                        var entrega = data.Entrega;
-                        var nonbreDestinatario = data.NonbreDestinatario;
-                        var calle = data.Calle;
-                        var lugarDestinatario = data.LugarDestinatario;
-                        var codigoInterno = data.CodigoInterno;
                         var descripcion = data.Descricion;
-                        var cantidadEntrega = data.CantidadEntrega;
-                        var lugarPDisp = data.LugarPDisp;
-                        var cantEscaneada = data.CantEscaneada;
-                        var preparador = data.Preparador;
-                        var estado = data.Estado;
                         var cantidad = data.CantidadEntrega;//aca va la cantidad
-                        var ruta = data.LugarPDisp;// aca la ruta
+                        var ean = data.Ean;
+                        var ci = data.CodigoInterno;
+                        var ruta = data.LugarPDisp;// esta es la ruta
                             result = {
                             Cantidad: cantidad, 
                             Ruta: ruta,
                             descripcion:descripcion,
-                            id : id
+                            id : id,
+                            ean: ean,
+                            ci:  ci
                         };
-
+                        flag=2;
+                       
                       resolve(result); // Resuelve la promesa con un objeto que contiene los valores de cantidad y Ruta
                     
                     } else {
                         // Continuar con el siguiente registro
                         flag=1;
                         cursor.continue();
-                    }
-                    
+                        return;
+                    }   
                 } 
-                else {
-                    console.log("No se encontró Producto con el EAN proporcionado.");
-                    // Busca para ver si es un Codigo de confirmacion
-                    var ruta = ctx._findRouteByEAN(sKey);
-
-                    if (ruta) {
-                        // Si se encuentra la ruta, realizar las acciones necesarias
-                        console.log("Ruta encontrada:", ruta);
-                        // Ver si ya se completa la cantidad escaneada 
-                        var oModel = ctx.getView().getModel();
-                        if(ruta == oModel.getProperty("/ruta") && oModel.getProperty("/cuenta")==oModel.getProperty("/cantidad") ){
-                            console.log("Confirmado");
-                            // se competo el ciclo de escaneo  de un producto, resetear variables y confirmar log
-                                result = {
-                                Cantidad: oModel.getProperty("/cantidad"), 
-                                Ruta: oModel.getProperty("/ruta"),
-                                descripcion:oModel.getProperty("/descripcion"),
-                                id : oModel.getProperty("/id")
-                            };
-        
-                        }
-                        else if(ruta == oModel.getProperty("/ruta") && oModel.getProperty("/cuenta")< oModel.getProperty("/cantidad") ){
-                            console.log("falta escanear");
-                            //  Abrir Fragment
-                            result = {
-                                Cantidad: oModel.getProperty("/cantidad"), 
-                                Ruta: oModel.getProperty("/ruta"),
-                                descripcion:oModel.getProperty("/descripcion"),
-                                id : oModel.getProperty("/id")
-                            };
-        
-                           // ctx.onOpenDialog("Falta agregar productos Scan = "+oModel.getProperty("/cuenta") , "el total debe ser:"+oModel.getProperty("/cantidad"));
-                        }
-                        
-                        else if(ruta != oModel.getProperty("/ruta") ){   
-                            if (ruta !=0 && oModel.getProperty("/cantidad")>0) {                                                    
-                                console.log("Confirmacion en otra ruta");
-                                //  Abrir Fragment
-                                result = {
-                                    Cantidad: -3, 
-                                    Ruta: oModel.getProperty("/ruta"),
-                                    descripcion:oModel.getProperty("/descripcion"),
-                                    id : oModel.getProperty("/id")
-                                };
-                            }
-                            else if (ruta != 0 && oModel.getProperty("/cantidad")==0){
-                                console.log("Antes de confirmar una ruta tiene ","que iniciar un ciclo de carga escaneando un producto")
-                                result = {
-                                    Cantidad: -4, 
-                                    Ruta: 0,
-                                    descripcion:"",
-                                    id : 0
-                                };
-                            }
-            
-                           // ctx.onOpenDialog("Error en la ruta de destino: "+ ruta , "debe confirmarse en ruta :"+oModel.getProperty("/ruta"));
-                            
-                        }
-                        
-                       
-                    } else {
-                        // Si no se encuentra la ruta, manejar el caso adecuadamente
-                        console.log("No es un producto ni un codigo de confirmacion");
-                        // ver si es un codigo interno
-                        leerElemento("Codigo_interno", sKey);
-                        // abrir un fragment
-                        if (flag==1)
-                            result = {
-                                Cantidad: -1, 
-                                Ruta: 0,
-                                descripcion:"",
-                                id : 0
-                            };
-                        else{
+                if (flag<2){
+                    if (flag==1 && (busqueda==1 || busqueda==2)){
+                        // console.log("Es un producto pero sobra");                    
                             result = {
                                 Cantidad: -2, 
                                 Ruta: 0,
                                 descripcion:"",
-                                id : 0
+                                id :0
                             };
-                        }
-    
-                        // ctx.onOpenDialog("Error : No es un producto ni un codigo de confirmacion");
-
+                            resolve(result); 
                     }
-                    resolve(result);
+                    else if (flag==0 && busqueda==1 ){
+                        // console.log("No Es un producto ");
+                            result = {
+                                Cantidad: -1, 
+                                Ruta: 0,
+                                descripcion:"",
+                                id :0
+
+                            };
+                            resolve(result); 
+                    }
+                    else if (flag==0 && busqueda==2 ){
+                        // console.log("No Es un producto ");
+                            result = {
+                                Cantidad: -1, 
+                                Ruta: 0,
+                                descripcion:"",
+                                id :0
+                            };
+                            resolve(result); 
+                        }
                 }
+               
+
                 
             };
-
             cursorRequest.onerror = function(event) {
                 console.log("Error al buscar el registro:", event.target.error);
             };
         };
-
         request.onerror = function(event) {
             console.log("Error al abrir la base de datos:", event.target.error);
         };
     }.bind(this));
 },
-/////
 
+/*
 onGetData2: function (key) {
     return new Promise(function(resolve, reject) {
         var request = indexedDB.open("ventilado", 2); // Asegúrate de usar la misma versión
@@ -1169,7 +1087,7 @@ onGetData2: function (key) {
         };
     }.bind(this));
 },
-
+*/
 
 
  //***** Método para abrir el diálogo en caso de errores *************/

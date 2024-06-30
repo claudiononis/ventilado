@@ -7,7 +7,7 @@
             <Label text="Completa la cantidad de cubetas reales que usaste y confirma." class="tituloSecundario" />
         </VBox>
            
-            <Table id="customTable"   items="{path: '/tableData'}">
+            <Table id="customTable2"   items="{path: '/tableData'}">
                 <columns>
                     <!-- Encabezados principales -->
                     <Column>
