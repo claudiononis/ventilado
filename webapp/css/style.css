@@ -144,3 +144,48 @@
     display: flex;
     align-items: center;
 }
+.sapMListTblRow:nth-child(odd) {
+    background-color: #f9f9f9; /* Color para filas impares */
+}
+
+.sapMListTblRow:nth-child(even) {
+    background-color: #ffffff; /* Color para filas pares */
+}
+.boldAndLargeText {
+    font-weight: bold;
+    font-size: 20px; /* Ajusta según sea necesario */
+    height: 30px;
+}
+
+/* Custom CSS file (styles.css) */
+.sapUiContentPadding {
+    padding: 2rem;
+}
+
+.sapUiResponsiveMargin {
+    margin: 1rem 0;
+}
+
+.sapUiSmallMargin {
+    margin: 0.5rem 0;
+}
+
+.inputSection {
+    display: flex;
+    align-items: center;
+}
+
+.inputLabel {
+    width: 12em;
+    text-align: end;
+    margin-right: 1rem;
+}
+
+.inputField {
+    width: 100%;
+}
+
+.actionButton {
+    width: 100%;
+    margin-top: 0.5rem;
+}

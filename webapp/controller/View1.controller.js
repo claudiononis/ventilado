@@ -15,34 +15,20 @@ sap.ui.define([
     var sTransporte;
     return Controller.extend("ventilado.ventilado.controller.View1", {
         onInit: function () {
-        var oDate = new Date();
-        var oFormattedDate = this._formatDate(oDate);
- /*       var oModel = new JSONModel({
-            date: oFormattedDate
-        });*/
-        var oFechaInput = this.byId("fecha"); // Asegúrate de que el ID del campo de entrada sea "fechaInput"
-        if (oFechaInput) {
-            oFechaInput.setValue(oFormattedDate);
-        }
- /*       // Crear el modelo global
-        var oGlobalModel = new JSONModel({
-        // Asignar datos al modelo global
-
-            reparto: "",
-            operador: "",
-            fecha: oFormattedDate,
-            cantidad: ""
-        });
-        // Establecer el modelo global en el componente
-        //this.setModel(oGlobalModel, "global");
-        // Llamar al método init de la clase base
-        //this.getView().setModel(oModel, "viewModel");
-        //UIComponent.prototype.init.apply(this, arguments);*/
-
-
-
+            var oDate = new Date();
+            var oFormattedDate = this._formatDate(oDate);
+            var oFechaInput = this.byId("fecha"); // Asegúrate de que el ID del campo de entrada sea "fechaInput"
+            if (oFechaInput) {
+                oFechaInput.setValue(oFormattedDate);
+            }
+        // Obtener el router y añadir la función para el evento routeMatched
+        var oRouter = UIComponent.getRouterFor(this);
+        oRouter.getRoute("RouteView1").attachPatternMatched(this.onRouteMatched, this);
         },
-    
+        onRouteMatched: function (oEvent) {
+            // Código que deseas ejecutar cada vez que la vista se muestra
+            console.log("aca");
+        },
         _formatDate: function (date) {
             var day = String(date.getDate()).padStart(2, '0');
             var month = String(date.getMonth() + 1).padStart(2, '0'); // Enero es 0
@@ -102,7 +88,7 @@ sap.ui.define([
                     console.log("Entrega: ", entrega);
                     console.log("Estado: ", estado);  
                     // leer datos del Transporte a  ventilar
-                    // ylos guardaa la base local
+                    // y los guarda en la base local
                     ctx._initDatabase();
                    //  habilitar botones de las distintas opciones
                     ctx.getView().byId("btScan").setEnabled(true);

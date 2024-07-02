@@ -14,21 +14,13 @@ sap.ui.define([
     return Controller.extend("ventilado.ventilado.controller.Scan2", {
          
         onInit: function () {
-            window.onbeforeunload = function() {
-                return "¿Estás seguro de que deseas salir de esta página?";
-            };
+          //  window.onbeforeunload = function() {
+          //      return "¿Estás seguro de que deseas salir de esta página?";
+          //  };
            // this._initDatabase();
             this._checkNetworkStatus();  // funcion para que el navegador controle la conexion a internet
-   //         this.obtenerYProcesarDatos(); //Obtiene los datos de la Base local agrupa x Ruta y arma  la tabla de avance           
-            // Crear un modelo local para almacenar los datos
-   //         var oLocalModel = new sap.ui.model.json.JSONModel({
-   //             codConfirmacionData: []
-   //         });
             this._fetchCodConfirmacionData(); // Llamar a la función para leer los Codigos de confirmacion de ruta del backend                  
-            
-   //         this.getView().setModel(oLocalModel, "localModel");  
-            
-            
+     
             var oModel = new sap.ui.model.json.JSONModel();
     this.getView().setModel(oModel);
     this.obtenerYProcesarDatos();
@@ -48,28 +40,13 @@ sap.ui.define([
                 var tableDataArray = resultado.map((registro) => {
                     var nuevoRegistro = {};
                     columnNames.forEach((column) => {
-                        nuevoRegistro[column] = registro[column] || "";
+                        nuevoRegistro[column] = registro[column] || "0";
                     });
                     return nuevoRegistro;
                 });
         
                 // Actualizar el modelo con tableDataArray
                 var oGlobalModel = this.getOwnerComponent().getModel("globalModel");
-           /*     var oModel = new sap.ui.model.json.JSONModel({
-                    isStarted:      false,   // verdadero si se pulso el botón START
-                    isArrowVisible: false,   // bandera para mostrar la flecha de la pantalla de escaneo
-                    tableData:      tableDataArray, // tabla para registrar el avance
-                    puesto:         "Estación de trabajo Nro: " + oGlobalModel.getData().puesto,
-                    transporte:     "Reparto: " + oGlobalModel.getData().reparto,
-                    cuenta:         0,
-                    cantidad:       0,
-                    ruta:           0,
-                    ean:            "",
-                    eanRuta:        "",
-                    id : 0,
-                    codConfirmacionData: []
-                    
-                });*/
                 var oModel = this.getView().getModel(); // Obtener el modelo de la vista
                 oModel.setData({
                     isStarted: false,
@@ -124,8 +101,7 @@ sap.ui.define([
             datos.forEach((registro) => {
                 let ruta = registro.LugarPDisp;
                 let cantidad = registro.CantidadEntrega; 
-                let sCantEscaneada = registro.CantEscaneada
-;           
+                let sCantEscaneada = registro.CantEscaneada;           
                 if (!resultado[ruta]) {
                     // Inicializa el objeto de la ruta si no existe
                     resultado[ruta] = {
@@ -142,9 +118,9 @@ sap.ui.define([
                 }
 
                 // Suma la cantidad al total
-                resultado[ruta]["TOT"] += cantidad;
-                resultado[ruta]["FALTA"] += cantidad;
-                resultado[ruta]["SCAN"] = resultado[ruta]["SCAN"]+sCantEscaneada;
+                resultado[ruta]["TOT"] += cantidad;                
+                resultado[ruta]["SCAN"] += Number(sCantEscaneada);
+                resultado[ruta]["FALTA"] =  resultado[ruta]["TOT"] -  resultado[ruta]["SCAN"];
                 // Aquí deberías agregar lógica para calcular SCAN, FALTA, Cub TEO, C Real, Pa
             });
             
@@ -309,7 +285,7 @@ sap.ui.define([
                         request.onsuccess = function(event) {
                             var db = event.target.result;
                             // Llamar a la función para actualizar el campo 'Estado'
-                            ctx.actualizarEstado(db, id, "Completo");
+                            ctx.actualizarEstado(db, id, "Completo",scant);
                         };
                         oModel.setProperty("/id", 0);                               
                         cantidad.setText("");
@@ -322,8 +298,9 @@ sap.ui.define([
                        // Buscar el registro correspondiente en tableData
                        tableData.forEach(function (registro) {
                            if (registro.Ruta === ruta) {                        
-                               registro.SCAN = registro.SCAN + scant;
-                               registro.FALTA = registro.FALTA - scant;
+                            registro.SCAN = Number(registro.SCAN) || 0;
+                               registro.SCAN += Number(scant);
+                               registro.FALTA = registro.FALTA - Number(scant);
                            }
                        });
                         // Establecer el array actualizado en el modelo
@@ -388,8 +365,8 @@ sap.ui.define([
         });
     },
 
-        actualizarEstado: function (db, id, nuevoEstado) {
-
+        actualizarEstado: function (db, id, nuevoEstado, cant) {
+            ctx=this;
             var transaction = db.transaction(["ventilado"], "readwrite");
             var objectStore = transaction.objectStore("ventilado");
    
@@ -399,7 +376,8 @@ sap.ui.define([
                 var data = event.target.result;// recupera el registro
                 if (data) {
                     // Actualizar el campo 'Estado'
-                    data.Estado = nuevoEstado;        
+                    data.Estado = nuevoEstado;   
+                    data.CantEscaneada = cant;    
                     // Guardar el registro actualizado
                     var updateRequest = objectStore.put(data);        
                     updateRequest.onsuccess = function(event) { // si se guardo satisfactoriamente vengox aca
@@ -409,6 +387,7 @@ sap.ui.define([
                         verifyRequest.onsuccess = function(event) {
                             var updatedData = event.target.result;
                             console.log("Valor actualizado del campo 'Estado':", updatedData.Estado);
+                            ctx.oActualizarBackEnd(id, nuevoEstado, cant );
                         };
                         verifyRequest.onerror = function(event) { // si hay un error al guardar el dato , voy x aca
                             console.log("Error al verificar el campo 'Estado':", event.target.error);
@@ -425,6 +404,12 @@ sap.ui.define([
         
            
         },
+        oActualizarBackEnd:function(id, estado, cantidad ){
+            var updatedData =[{ "Id": id, "Estado": estado, "CantEscaneada": cantidad }] ;
+            this.crud("ACTUALIZAR", "ventilado",id, updatedData, "");
+
+        },
+
         //   Aca se hacen los calculos para mostrar los numeros GRANDES de la pantalla
         obtenerCantidadYRuta: async function(eanInput, busqueda) {
            
@@ -641,7 +626,7 @@ sap.ui.define([
 */
 
 //*******  Inicio  Funciones para el CRUD del oData *******/  
-        crud: function(operacion , tabla,oValor1, oValor2 ){
+        crud: function(operacion , tabla,id, oValor1, oValor2 ){
             var ctx = this; 
             var oModel = new sap.ui.model.odata.v2.ODataModel("/sap/opu/odata/sap/ZVENTILADO_SRV/", {                
                 useBatch: false,
@@ -750,10 +735,10 @@ sap.ui.define([
                 var updateRecord = function(oEntry, onSuccess, onError) {
                     // La ruta debe estar construida correctamente según el modelo y los datos
                     var sEntitySet  = "/" + tabla + "Set"
-                    var sPath = sEntitySet+"(" + oEntry.Dni + ")";  // Ajusta esta ruta según tu modelo OData
+                    var sPath = sEntitySet+"(" + oEntry.Id + ")";  // Ajusta esta ruta según tu modelo OData
                     oModel.update(sPath, oEntry, {
                         success: function () {
-                            MessageToast.show("Registro " + oEntry.Dni + " actualizado con éxito.");
+                            MessageToast.show("Registro " + oEntry.Id + " actualizado con éxito.");
                             if (onSuccess) onSuccess();
                         },
                         error: function (oError) {

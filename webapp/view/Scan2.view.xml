@@ -20,7 +20,7 @@
                             </HBox>
                             
                             <HBox class="inputSection">
-                                <Label id="lEan" text="EAN" class="label" />
+                                <Label id="lEan" text="EAN / Cod.Int" class="label" />
                                 <Input id="eanInput" enabled="{/isStarted}" class="inputEan" submit="onEanInputSubmit" />
                                 <Button id="btCi2" enabled="false" text="COD. INTERNO" type="Reject" press="onOpenCodeInputDialog" class="button" />
                                 <Label id="edtCI" text="" class="inputCodigoIntern" width="100px" />
@@ -58,14 +58,14 @@
                          <!--    <Column><Text text="C Real" /></Column>
                             <Column><Text text="Pa" /></Column>-->
                         </columns>
-                        <items>
+                        <items >
                             <ColumnListItem>
                                 <cells>
-                                    <Text  text="{Ruta}" />
-                                    <Text text="{TOT}" />
-                                    <Text text="{SCAN}" />
-                                    <Text text="{FALTA}" />
-                                    <Text text="{Cub TEO}" />
+                                    <Text  text="{Ruta}" class="boldAndLargeText" />
+                                    <Text text="{TOT}" class="boldAndLargeText" />
+                                    <Text text="{SCAN}"  class="boldAndLargeText"  />
+                                    <Text text="{FALTA}"  class="boldAndLargeText"  />
+                                    <Text text="{Cub TEO}" class="boldAndLargeText"  />
                                 <!--    <Input value="{C Real}" liveChange="onInputChange1" />
                                     <Input value="{Pa}" liveChange="onInputChange2" />-->
                                 </cells>
