@@ -1,7 +1,0 @@
-<!-- ParcialtDialog.fragment.xml -->
-<core:FragmentDefinition xmlns="sap.m" xmlns:core="sap.ui.core">
-    <Dialog id="dialogoParcial" title="Ingrese Cantidad Parcial" afterClose="onParcialDialogClose">
-        <Input id="parcial" placeholder="Ingrese cantidad parcial" />
-        <Button text="Confirmar"  type="Emphasized" press="onParcialConfirm" />
-    </Dialog>
-</core:FragmentDefinition>

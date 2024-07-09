@@ -7,23 +7,32 @@ sap.ui.define([
     "sap/ui/model/odata/v2/ODataModel",
     "sap/ui/model/Filter",
     "sap/ui/model/FilterOperator",
+    "sap/m/MessageBox",
 
-], function (Controller, MessageToast, PDFViewer,Fragment,JSONModel,ODataModel,Filter,FilterOperator) {
+], function (Controller, MessageToast, PDFViewer,Fragment,JSONModel,ODataModel,Filter,FilterOperator,MessageBox) {
     "use strict";
     var ctx= this;  // Variabl eglobal en el controlador para guardar el contexto
+    var sTransporte;
+    var sPuesto ;
+    var sReparto ;
+    var sPtoPlanif ;
+    var sUsuario;
+    var sFecha; 
     return Controller.extend("ventilado.ventilado.controller.Scan2", {
          
         onInit: function () {
-          //  window.onbeforeunload = function() {
-          //      return "¿Estás seguro de que deseas salir de esta página?";
-          //  };
-           // this._initDatabase();
+            sPuesto = sessionStorage.getItem("puesto") || "";
+            sReparto = sessionStorage.getItem("reparto") || "";
+            sPtoPlanif = sessionStorage.getItem("pto_planif") || "";
+            sUsuario = sessionStorage.getItem("usuario") || "";
+            sFecha = sessionStorage.getItem("fecha") || new Date().toISOString().slice(0, 10);
+     
             this._checkNetworkStatus();  // funcion para que el navegador controle la conexion a internet
             this._fetchCodConfirmacionData(); // Llamar a la función para leer los Codigos de confirmacion de ruta del backend                  
      
             var oModel = new sap.ui.model.json.JSONModel();
-    this.getView().setModel(oModel);
-    this.obtenerYProcesarDatos();
+            this.getView().setModel(oModel);
+            this.obtenerYProcesarDatos();
             
         },
 
@@ -32,7 +41,18 @@ sap.ui.define([
             try {
                 let datos = await this.obtenerDatosDeIndexedDB();
                 let resultado = this.procesarDatos(datos);
-        
+                //Calculo los totales para la tabla avance
+                var total = resultado.reduce(function(accumulator, currentValue) {
+                    return accumulator + Number(currentValue.TOT);
+                }, 0);
+                var totalScan = resultado.reduce(function(accumulator, currentValue) {
+                    return accumulator + Number(currentValue.SCAN);
+                }, 0);
+                var totalFalta = resultado.reduce(function(accumulator, currentValue) {
+                    return accumulator + Number(currentValue.FALTA);
+                }, 0);
+                //Recupera el estado del transporte
+
                 // Nombres de las columnas
                 var columnNames = ["Ruta", "TOT", "SCAN", "FALTA", "Cub TEO", "C Real", "Pa"];
         
@@ -46,14 +66,19 @@ sap.ui.define([
                 });
         
                 // Actualizar el modelo con tableDataArray
-                var oGlobalModel = this.getOwnerComponent().getModel("globalModel");
+             //   var oGlobalModel = this.getOwnerComponent().getModel("globalModel");
                 var oModel = this.getView().getModel(); // Obtener el modelo de la vista
                 oModel.setData({
+                    printEtiquetas: false,
                     isStarted: false,
                     isArrowVisible: false,
                     tableData: tableDataArray,
-                    puesto: "Estación de trabajo Nro: " + oGlobalModel.getData().puesto,
-                    transporte: "Reparto: " + oGlobalModel.getData().reparto,
+                    totalP: total,
+                    totalScan: totalScan,
+                    totalFalta: totalFalta,
+                    estadoDelTransporte: "",
+                    puesto: "Estación de trabajo Nro: " + sPuesto,
+                    transporte: "Reparto: " + String(Number(sReparto)),
                     cuenta: 0,
                     cantidad: 0,
                     ruta: 0,
@@ -70,7 +95,7 @@ sap.ui.define([
           },
           obtenerDatosDeIndexedDB: function () {
             return new Promise((resolve, reject) => {
-              let request = indexedDB.open("ventilado",2);
+              let request = indexedDB.open("ventilado",5);
           
               request.onerror = (event) => {
                 console.log("Error al abrir la base de datos:", event);
@@ -105,13 +130,25 @@ sap.ui.define([
                 if (!resultado[ruta]) {
                     // Inicializa el objeto de la ruta si no existe
                     resultado[ruta] = {
-                        "Ruta": ruta,
-                        "TOT": 0,
-                        "SCAN": 0, 
-                        "FALTA": 0, 
-                        "Cub TEO": 0, 
-                        "C Real": 0, 
-                        "Pa": 0, 
+                        "Ruta"        : ruta,
+                        "TOT"         : 0,
+                        "SCAN"        : 0, 
+                        "FALTA"       : 0, 
+                        "Cub TEO"     : registro.Cubteo, 
+                        "C Real"      : 0, 
+                        "Pa"          : 0, 
+                        "TRANSPORTE"  : registro.Transporte ,
+                        "ENTREGA"     : registro.Entrega,               
+                       "CUBETA"       : 0,
+                     //   "TOTALCUBETA" : 0,  "Cub TEO"
+                        "PRODUCTO"    : 0,
+                        "KILO"        : 0,
+                        "M3"          : registro.M3teo,
+                        "CLIENTE"     : registro.Destinatario,
+                        "RAZONSOCIAL" : registro.NombreDestinatario,
+                        "DIRECCION"   : registro.Calle,
+                        "LOCALIDAD"   :  registro.LugarDestinatario,
+
                       //  fecha: registro.fecha,  //Suponiendo que la fecha es la misma para todos los registros de la misma ruta
                       //  transportista: registro.transportista  // Suponiendo que el transportista es el mismo para todos los registros de la misma ruta
                     };
@@ -121,6 +158,20 @@ sap.ui.define([
                 resultado[ruta]["TOT"] += cantidad;                
                 resultado[ruta]["SCAN"] += Number(sCantEscaneada);
                 resultado[ruta]["FALTA"] =  resultado[ruta]["TOT"] -  resultado[ruta]["SCAN"];
+               // resultado[ruta]["TRANSPORTE"] = registro.Transporte ;
+               // resultado[ruta]["ENTREGA"] = registro.Entrega;
+                resultado[ruta]["CUBETA"] = "";
+                resultado[ruta]["TOTALCUBETA"] = resultado[ruta]["TOTALCUBETA"];
+                resultado[ruta]["PRODUCTO"] =resultado[ruta]["TOT"] ;
+                resultado[ruta]["KILO"] += registro.kgbrr ;
+                resultado[ruta]["M3"] =registro.M3r;
+                resultado[ruta]["CLIENTE"] = registro.Destinatario ;
+                resultado[ruta]["RAZONSOCIAL"] =  registro.NombreDestinatario;
+                resultado[ruta]["DIRECCION"] = registro.Calle ;
+                resultado[ruta]["LOCALIDAD"] = registro.LugarDestinatario;
+                resultado[ruta]["C Real"] = registro.Cubre;
+                resultado[ruta]["Pa"] = registro.Pa;
+                     
                 // Aquí deberías agregar lógica para calcular SCAN, FALTA, Cub TEO, C Real, Pa
             });
             
@@ -130,38 +181,6 @@ sap.ui.define([
             return arrayResultado;
         },
 /****** Fin: Obtiene los datos de la Base local agrupa x Ruta y arma  la tabla de avance  */        
-
-
-/***** Inicio : Rutinas que se activan cuando se competan la cantidad de cubetas reales   */
-        onInputChange1: function(oEvent) {  
-            // Obtener el valor del input modificado
-            var newValue = oEvent.getParameter("value");
-
-            // Obtener el contexto del ítem
-            var oContext = oEvent.getSource().getBindingContext();
-
-            // Obtener el modelo asociado al controlador
-            var oModel = this.getView().getModel();
-
-            // Actualizar el valor en el modelo
-            oModel.setProperty(oContext.getPath() + "/C Real", newValue);
-           
-        },
-        onInputChange2: function(oEvent) {
-            // Obtener el valor del input modificado
-            var newValue = oEvent.getParameter("value");
-
-            // Obtener el contexto del ítem
-            var oContext = oEvent.getSource().getBindingContext();
-
-            // Obtener el modelo asociado al controlador
-            var oModel = this.getView().getModel();
-
-            // Actualizar el valor en el modelo
-            oModel.setProperty(oContext.getPath() + "/Pa", newValue);
-            
-        },
-/** Fin : Rutinas que se activan cuando se competan la cantidad de cubetas reales  ********/
 
         _checkNetworkStatus: function () {
             if (navigator.onLine) {
@@ -253,11 +272,26 @@ sap.ui.define([
                         else{ // no es ni producto ni CI, comprobar si es un codigo de confirmacion                           
                             if(cantidadYRuta.cantidad==-2){
                                 console.log(" Error: Producto sobrante");
-                                this.onOpenDialog(" Error : Producto sobrante");
+                                MessageBox.error("ERROR. este producto no puede asignarse a ninguna ruta. Producto sobrante", {
+                                    title: "Error ",
+                                    styleClass: "customMessageBox", // Aplica la clase CSS personalizada
+                                    onClose: function () {
+                                        console.log("Mensaje de error personalizado cerrado.");
+                                    }
+                                });       
+                              
                             }
                             else if (cantidadYRuta.cantidad==-1){
-                                console.log(" Error no se conoce el valor ingresado");
-                                this.onOpenDialog(" Error : Error no se conoce el valor ingresado");
+                                console.log(" Error no se conoce el valor ingresado");  
+                                                              
+                               MessageBox.error("ERROR. No se pudo determinar el valor ingresado", {
+                                title: "Error ",
+                                styleClass: "customMessageBox", // Aplica la clase CSS personalizada
+                                onClose: function () {
+                                    console.log("Mensaje de error personalizado cerrado.");
+                                }
+                            });
+
                             }                            
                         }
 
@@ -280,7 +314,7 @@ sap.ui.define([
                         oModel.setProperty("/ci", "");
                         oModel.setProperty("/descripcion", "");
                         //actualiza el estado 
-                        var request = indexedDB.open("ventilado", 2);  
+                        var request = indexedDB.open("ventilado", 5);  
                         var id=  oModel.getProperty("/id");                         
                         request.onsuccess = function(event) {
                             var db = event.target.result;
@@ -303,15 +337,36 @@ sap.ui.define([
                                registro.FALTA = registro.FALTA - Number(scant);
                            }
                        });
+                       var totalScan = oModel.getProperty("/totalScan");
+                       totalScan = totalScan + Number(scant);
+                       var totalFalta = oModel.getProperty("/totalFalta");
+                       totalFalta = totalFalta - Number(scant);
+
                         // Establecer el array actualizado en el modelo
                        oModel.setProperty("/tableData", tableData);
+                       oModel.setProperty("/totalScan", totalScan);
+                       oModel.setProperty("/totalFalta", totalFalta);
                     }
+                    
                     else{
-                        this.onOpenDialog(" Error : esta confirmando en la ruta equivocada","tiene que hacelo en la ruta"+ oModel.getProperty("/ruta"));
+                        //MessageBox.warning("Error : Esta confirmando en una ruta equivocada, tiene que hacelo en la ruta"+ oModel.getProperty("/ruta"));
+                        MessageBox.error("Error : Esta confirmando en una ruta equivocada, tiene que hacelo en la ruta "+ oModel.getProperty("/ruta"), {
+                            title: "Error ",
+                            styleClass: "customMessageBox", // Aplica la clase CSS personalizada
+                            onClose: function () {
+                                console.log("Mensaje de error personalizado cerrado.");
+                            }
+                        });
                     } 
                 }
-                else{                   
-                    this.onOpenDialog(" Error : tiene que ingresar un codigo de confirmacion de ruta");                    
+                else{  
+                    MessageBox.error("Error : Tiene que ingresar un codigo de confirmacion de ruta", {
+                        title: "Error ",
+                        styleClass: "customMessageBox", // Aplica la clase CSS personalizada
+                        onClose: function () {
+                            console.log("Mensaje de error personalizado cerrado.");
+                        }
+                    });               
                 }
             }
             var oModel = this.getView().getModel();
@@ -380,7 +435,7 @@ sap.ui.define([
                     data.CantEscaneada = cant;    
                     // Guardar el registro actualizado
                     var updateRequest = objectStore.put(data);        
-                    updateRequest.onsuccess = function(event) { // si se guardo satisfactoriamente vengox aca
+                    updateRequest.onsuccess = function(event) { // si se guardo satisfactoriamente vengo x aca
                         console.log("El campo 'Estado' ha sido actualizado exitosamente.");
                         // Verificar que el campo 'Estado' ha sido actualizado correctamente
                         var verifyRequest = objectStore.get(id);
@@ -428,6 +483,39 @@ sap.ui.define([
 //*******  Funcion para descargar las etiquetas  ****** */ 
         onGeneratePDF: function () {
 
+
+            var oModel = new sap.ui.model.odata.v2.ODataModel("/sap/opu/odata/sap/ZVENTILADO_SRV/", {
+                useBatch: false  // Deshabilitar batch requests, actualizo de a un registro.
+            });
+            //Se envian los datos para las etiquetas
+
+      /*      var oData = {
+                "Dni": 1,
+                "Nombre": "value2",
+                "Apellido":"erere",
+            };*/
+            ctx=this.getView(); //guardo el contexto
+        /*    oModel.create("/zpruebaSet", oData, {
+                success: function(oData, response) {*/
+                    // Después de que se cree la entidad con éxito, genera la URL para el PDF*/
+                    var sServiceURL = oModel.sServiceUrl;
+                    var sSource = sServiceURL + "/sFormSet(Fname='"+sessionStorage.getItem("reparto")+"')/$value";
+                    // Crear y abrir el PDFViewer
+                    var opdfViewer = new sap.m.PDFViewer();
+                    ctx.addDependent(opdfViewer);
+                    opdfViewer.setSource(sSource);
+                    opdfViewer.setTitle("Etiquetas del Reparto");
+                    opdfViewer.open();  
+             /*   }.bind(this),
+                error: function(oError) {
+                    sap.m.MessageToast.show("Error al enviar datos al backend");
+                }
+           });*/
+
+        },
+        onGeneratePDF_back: function () {
+
+
             var oModel = new sap.ui.model.odata.v2.ODataModel("/sap/opu/odata/sap/ZVENTILADO_SRV/", {
                 useBatch: false  // Deshabilitar batch requests, actualizo de a un registro.
             });
@@ -443,8 +531,9 @@ sap.ui.define([
                 success: function(oData, response) {
                     // Después de que se cree la entidad con éxito, genera la URL para el PDF
                  var sServiceURL = oModel.sServiceUrl;
-                    var sSource = sServiceURL + "/sFormSet(Fname='ZETIQUETAS')/$value";
-                    
+                    //var sSource = sServiceURL + "/sFormSet(Fname='ZETIQUETAS')/$value";
+                    var sSource = sServiceURL + "/sFormSet(Fname='"+sTransporte+"')/$value";
+                   // Fname='" + sFname + "',FnameNew ='" + sTransporte + "'
                     // Crear y abrir el PDFViewer
                     var opdfViewer = new sap.m.PDFViewer();
                     ctx.addDependent(opdfViewer);
@@ -559,34 +648,126 @@ sap.ui.define([
         
          // Método para abrir el diálogo Stop
          onStopDialog: function() {
-           
-            //Cargamos el Dialogo  
-            var oView = this.getView();            
-            if (!this.byId("dialogoStop")) {
-             // load asynchronous XML fragment
-             Fragment.load({
-              id: oView.getId(),
-              name: "ventilado.ventilado.view.StopDialog",
-              controller: this
-            }).then(function (oDialog) {
-            // connect dialog to the root view 
-            //of this component (models, lifecycle)
-                oView.addDependent(oDialog);
-                oDialog.open();
-               });
-             } else {
-                 this.byId("dialogoStop").open();
-                  }
+           ctx=this;
+           //Vemos el estado del  Transporte 
+           var oModel= this.getView().getModel();
+                //Cargamos el Dialogo  
+                var oView = this.getView();            
+                if (!this.byId("dialogoStop")) {
+                // load asynchronous XML fragment
+                Fragment.load({
+                id: oView.getId(),
+                name: "ventilado.ventilado.view.StopDialog",
+                controller: this
+                }).then(function (oDialog) {
+                // connect dialog to the root view 
+                //of this component (models, lifecycle)
+                    oView.addDependent(oDialog);
+                    oDialog.open();
+                });
+                } else {
+                    this.byId("dialogoStop").open();
+                    }
+     
          },
           // Método para manejar la confirmación del valor ingresado en el diálogo Stop
         onStopConfirm: function() {
-            var stop = this.byId("stopInput");
-        //    var inputValue = stop.getValue();
 
-            // Transferir el valor ingresado  a la logica
+            var oTable = this.byId("customTable2");
+            var aItems = oTable.getItems();
+            var oModel = this.getView().getModel();
+            var aData = oModel.getProperty("/tableData");
+            var bValid = true;
+            aItems.forEach(function(oItem, index) {
+                var oCells = oItem.getCells();
+                // Verificar que al menos uno de los valores sea mayor a cero
+                if (oCells[5].getValue() <= 0 && oCells[6].getValue() <= 0) {
+                    bValid = false;
+                }
 
-            this.byId("dialogoStop").close();            
-    
+                aData[index]["C Real"] = oCells[5].getValue();
+                aData[index]["Pa"] = oCells[6].getValue();
+            });
+            if (bValid){
+                oModel.setProperty("/tableData", aData);
+                console.log("Updated Data: ", oModel.getProperty("/tableData"));
+                var request = indexedDB.open("ventilado", 5);  
+                var id=  oModel.getProperty("/id");                         
+                request.onsuccess = function(event) {
+                    var db = event.target.result;
+                    // Iterar sobre cada elemento de tableData y actualizar en IndexedDB
+                    aData.forEach(function(item) {
+                        var indice = item.Ruta; // Usar el campo 'Ruta' como índice
+                        var nuevoCubR = Number(item["C Real"]); // Campo 'C Cub'
+                        var nuevoValorPa = Number(item["Pa"]); // Campo 'Pa'
+                       
+                        // Llamar a la función para actualizar el campo 'CubR y Pa' y el estado del transporte
+                        ctx.actualizarCantCubReales(db, indice, nuevoCubR, nuevoValorPa, "CERRADO");
+                        ctx.byId("dialogoStop").close(); 
+                        var oModel = ctx.getView().getModel();
+                        oModel.setProperty("/estadoDelTransporte", "CERRADO");
+                        oModel.setProperty("/printEtiquetas", true);
+                    });
+                    
+                };
+              
+                
+
+            }
+            else {
+                MessageBox.error("Los campos 'C Real' y 'Pa' no pueden ser ambos cero. Por favor, introduce valores válidos.", {
+                    title: "Error ",
+                    styleClass: "customMessageBox", // Aplica la clase CSS personalizada
+                    onClose: function () {
+                        console.log("Mensaje de error personalizado cerrado.");
+                    }
+                });       
+            } 
+            
+        },
+
+        actualizarCantCubReales: function (db, indice, nuevoCubR,nuevoValorPa, estado) {
+            ctx=this;
+            var transaction = db.transaction(["ventilado"], "readwrite");
+            var objectStore = transaction.objectStore("ventilado");
+            var index = objectStore.index("LugarPDisp");
+            var lugar_p_disp = indice; // Reemplaza esto con el valor que estás buscando
+        
+            index.openCursor(IDBKeyRange.only(lugar_p_disp)).onsuccess = function(event) {
+                var cursor = event.target.result;
+                if (cursor) {
+                    var record = cursor.value;                    
+                    // Actualizar los campos Cubre y Pa con los nuevos valores
+                    record.Cubre = nuevoCubR;
+                    record.Pa = nuevoValorPa;
+                    record.AdicChar1= estado;
+                    var id = record.Id;
+                    // Actualizar el registro en el object store
+                    var updateRequest = cursor.update(record);
+                    updateRequest.onsuccess = function() {
+                        console.log("Registro actualizado:", record);
+                        var updatedData =[{ "Id": id, "Cubre": nuevoCubR, "Pa": nuevoValorPa , "AdicChar1":estado}] ;
+                        ctx.crud("ACTUALIZAR", "ventilado",id, updatedData, "");
+                        
+                    };
+                    updateRequest.onerror = function(event) {
+                        console.error("Error al actualizar el registro:", event.target.errorCode);
+                    };
+        
+                    cursor.continue(); // Continuar buscando más registros
+                } else {
+                    console.log("No more records found or no records found");
+                }
+            };
+        
+            transaction.oncomplete = function() {
+                console.log("Transacción completada.");
+            };
+        
+            transaction.onerror = function(event) {
+                console.error("Error en la transacción:", event.target.errorCode);
+            };     
+           
         },
         // Método para manejar el evento afterClose del diálogo
         onStopDialogClose: function(oEvent) {
@@ -705,7 +886,7 @@ sap.ui.define([
                     var sEntitySet  = "/" + tabla + "Set"
                     oModel.create(sEntitySet, oEntry, {
                         success: function () {
-                            MessageToast.show("Registro " + oEntry.Dni + " creado con éxito.");
+                        //    MessageToast.show("Registro " + oEntry.Dni + " creado con éxito.");
                             if (onSuccess) onSuccess();
                         },
                         error: function (oError) {
@@ -805,69 +986,7 @@ deleteRecord(dniToDelete, onSuccessFunction, onErrorFunction, "additionalParamet
 
 //******* Fin  Funciones para el CRUD  *******/   
      
-/////////   Funciones  base offline
-/*_initDatabase: function () {
-    var dbName = "ventiladoLocal";
 
-    // Abrir una conexión a la base de datos para asegurarte de que esté cerrada
-    var request = indexedDB.open(dbName);
-    
-    // Manejar el evento de éxito de apertura
-    request.onsuccess = function(event) {
-        // Cerrar la base de datos si está abierta
-        var db = event.target.result;
-        db.close();
-    
-        // Ahora puedes eliminar la base de datos
-        var deleteRequest = indexedDB.deleteDatabase(dbName);
-    
-        deleteRequest.onsuccess = function(event) {
-            console.log("Base de datos borrada con éxito.");
-        };
-    
-        deleteRequest.onerror = function(event) {
-            console.error("Error al borrar la base de datos:", event.target.error);
-        };
-
-
-    }
-
-
-
-    //Se crea la base local con todos sus campos para el transporte que se ventilara
-    //Ver de hacer un function impor y traer labase, luego volcarla aca
-    var request = indexedDB.open("ventilado", 2);
-
-    request.onerror = function (event) {
-        console.error("Error al abrir la base de datos:", event.target.errorCode);
-    };
-
-    request.onupgradeneeded = function (event) {
-        var db = event.target.result;
-        // crear la tabla y los campos claves
-        var objectStore = db.createObjectStore("ventilado", { keyPath: "Id" });
-
-        // crear los campos
-       // objectStore.createIndex("Nombre", "Nombre", { unique: false });
-       // objectStore.createIndex("Apellido", "Apellido", { unique: false });
-
-         objectStore.createIndex("Fecha","Fecha", { unique: false });
-         objectStore.createIndex("Transporte","Transporte", { unique: false });
-         objectStore.createIndex("Entrega","Entrega", { unique: false });
-        objectStore.createIndex("Nonbre_destinatario","Nonbre_destinatario", { unique: false });
-         objectStore.createIndex("Calle","Calle", { unique: false });
-    
-
-
-        console.log("Almacén de objetos creado con ,:éxito.");
-    };
-
-    request.onsuccess = function (event) {
-        this.db = event.target.result;
-        console.log("Base de datos abierta con éxito.");
-        this._fetchAndStoreOData(); //Luego de abrir la base se guardan los datos
-    }.bind(this);
-},*/
 
 _fetchAndStoreOData: function () {
     var oModel = new ODataModel("/sap/opu/odata/sap/ZVENTILADO_SRV/");
@@ -898,7 +1017,7 @@ onGetData: function (key,busqueda) { // busqueda =1 busca si es un producto
     var flag = 0;
     return new Promise(function(resolve, reject) {
         var index;
-        var request = indexedDB.open("ventilado", 2); // Asegúrate de usar la misma versión
+        var request = indexedDB.open("ventilado", 5); // Asegúrate de usar la misma versión
 
         request.onsuccess = function(event) {
             var db = event.target.result;
@@ -913,12 +1032,12 @@ onGetData: function (key,busqueda) { // busqueda =1 busca si es un producto
                     index = objectStore.index("Ean");
             }
             else{
-                // Verificar si el índice "Codigo_interno" existe          
-                if (!objectStore.indexNames.contains("Codigo_interno")) {
-                    console.error("El índice 'Codigo_interno' no se encontró.");
+                // Verificar si el índice "CodigoInterno" existe          
+                if (!objectStore.indexNames.contains("CodigoInterno")) {
+                    console.error("El índice 'CodigoInterno' no se encontró.");
                     return;
                 }
-                index = objectStore.index("Codigo_interno");
+                index = objectStore.index("CodigoInterno");
             }           
             var cursorRequest = index.openCursor(IDBKeyRange.only(sKey));           
             cursorRequest.onsuccess = function(event) {           
@@ -1002,77 +1121,7 @@ onGetData: function (key,busqueda) { // busqueda =1 busca si es un producto
     }.bind(this));
 },
 
-/*
-onGetData2: function (key) {
-    return new Promise(function(resolve, reject) {
-        var request = indexedDB.open("ventilado", 2); // Asegúrate de usar la misma versión
 
-        request.onsuccess = function(event) {
-            var db = event.target.result;
-            var transaction = db.transaction(["ventilado"], "readonly");
-            var objectStore = transaction.objectStore("ventilado");
-         
-            // Verificar si el índice "Codigo interno" existe
-          
-                if (!objectStore.indexNames.contains("Codigo_interno")) {
-                    console.error("El índice 'Codigo interno' no se encontró.");
-                    return;
-                }
-
-            var index = objectStore.index("Codigo_interno");
-
-            var getRequest = index.get(key);
-
-            getRequest.onsuccess = function(event) {
-                var data = event.target.result;
-                if (data) {
-                    console.log("Registro encontrado:", data);
-                    // Aquí puedes manejar el registro encontrado
-                     // Accediendo a cada campo del registro
-                    var id = data.Id;
-                    var ean = data.Ean;
-                    var fecha = data.Fecha;
-                    var transporte = data.Transporte;
-                    var entrega = data.Entrega;
-                    var nonbreDestinatario = data.NonbreDestinatario;
-                    var calle = data.Calle;
-                    var lugarDestinatario = data.LugarDestinatario;
-                    var codigoInterno = data.CodigoInterno;
-                    var descripcion = data.Descricion;
-                    var cantidadEntrega = data.CantidadEntrega;
-                    var lugarPDisp = data.LugarPDisp;
-                    var cantEscaneada = data.CantEscaneada;
-                    var preparador = data.Preparador;
-                    var estado = data.Estado;
-                    var cantidad = data.CantidadEntrega;//aca va la cantidad
-                    var ruta = data.LugarPDisp;// aca la ruta
-                    var result = {
-                        Cantidad: cantidad, 
-                        Ruta: ruta,
-                        descripcion:descripcion,
-                        ean: ean
-                    };
-
-
-
-                    resolve(result); // Resuelve la promesa con un objeto que contiene los valores de cantidad y Ruta
-                } else {
-                    console.log("No se encontró ningún registro con el Codigo interno proporcionado.");
-                   
-                }
-            };
-
-            getRequest.onerror = function(event) {
-                console.log("Error al buscar el registro:", event.target.error);
-            };
-        };
-
-        request.onerror = function(event) {
-            console.log("Error al abrir la base de datos:", event.target.error);
-        };
-    }.bind(this));
-},
-*/
 
 
  //***** Método para abrir el diálogo en caso de errores *************/
@@ -1148,20 +1197,20 @@ onDeleteData: function () {
 /********* Función general para manejar operaciones CRUD de la BD Local y devolver una promesa *****/
 manejarCRUD: function (operacion, datos, campoBusqueda = "id") {
     return new Promise((resolve, reject) => {
-      const request = indexedDB.open("miBaseDeDatos", 1);
+      const request = indexedDB.open("ventilado", 5);
   
       request.onupgradeneeded = function(event) {
         const db = event.target.result;
-        if (!db.objectStoreNames.contains("miObjectStore")) {
-          const objectStore = db.createObjectStore("miObjectStore", { keyPath: "id" });
+        if (!db.objectStoreNames.contains("ventilado")) {
+          const objectStore = db.createObjectStore("ventilado", { keyPath: "id" });
           objectStore.createIndex("nombre", "nombre", { unique: false });
         }
       };
   
       request.onsuccess = function(event) {
         const db = event.target.result;
-        const transaction = db.transaction(["miObjectStore"], "readwrite");
-        const objectStore = transaction.objectStore("miObjectStore");
+        const transaction = db.transaction(["ventilado"], "readwrite");
+        const objectStore = transaction.objectStore("ventilado");
         let req;
   
         switch (operacion) {

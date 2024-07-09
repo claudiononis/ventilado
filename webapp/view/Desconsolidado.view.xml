@@ -1,0 +1,233 @@
+<mvc:View controllerName="ventilado.ventilado.controller.Scan2"
+    xmlns:mvc="sap.ui.core.mvc" displayBlock="true"
+    xmlns="sap.m"
+    xmlns:m="sap.m"
+    height="100%" width="100%">
+
+    <Page title="Scaneamos todos los productos y los colocamos en la cubeta que corresponda.">
+        <ScrollContainer vertical="true" horizontal="true" height="50%" width="50%">
+            <content>
+                <Table items="{path: '/tableData'}" >
+                    <columns>
+                        <Column   width="10%"
+                           >
+    >
+                            <header>
+                                <VBox>                                        
+                                    <Label text="Transporte" class="sameHeight"/>
+                                    <Text text="Control" class="sameHeight" />
+                                </VBox>
+                            </header>
+                        </Column>
+                        <Column>
+                            <header>
+                                <VBox>                                        
+                                    <Label text="" class="sameHeight"/>
+                                    <Text text="" class="sameHeight" />
+                                </VBox>
+                            </header>
+                        </Column>
+                        <Column>
+                            <header>
+                                <VBox>                                        
+                                    <Label text="Entrega->" class="sameHeight"/>
+                                    <Text text="" class="sameHeight" />
+                                </VBox>
+                            </header>
+                        </Column>
+                        <Column>
+                            <header>
+                                <VBox class="customColumnHeader">                                        
+                                    <Label text="RUTA" class="customColumnHeader"/>
+                                    <Text text="Totales" class="sameHeight" />
+                                </VBox>
+                            </header>
+                        </Column>
+                        <Column>
+                            <header>
+                                <VBox class="customColumnHeader">                                    
+                                    <Label text="TOT" class="customColumnHeader" />
+                                    <Text text="{=${/totalP}}" class="sameHeight" />
+                                </VBox>
+                            </header>
+                        </Column>
+                        <Column>
+                            <header>
+                                <VBox class="customColumnHeader">                                    
+                                    <Label text="SCAN" class="customColumnHeader" />
+                                    <Text text="{=${/totalScan}}" class="sameHeight" />
+                                </VBox>
+                            </header>
+                        </Column>
+                        <Column>
+                            <header>
+                                <VBox class="customColumnHeader">                                    
+                                    <Label text="FALTA" class="customColumnHeader" />
+                                    <Text text="{=${/totalFalta}}" class="sameHeight" />
+                                </VBox>
+                            </header>
+                        </Column>
+                        <!-- Más columnas de ejemplo -->
+                        <Column>
+                            <header>
+                                <VBox class="customColumnHeader">                                   
+                                    <Label text="Cub TEO 1" class="customColumnHeader" />
+                                    <Text text="" class="sameHeight" />
+                                </VBox>
+                            </header>
+                        </Column>
+                        <Column>
+                            <header>
+                                <VBox class="">                                   
+                                    <Label text="Cub TEO 2" class="customColumnHeader" />
+                                    <Text text="" class="sameHeight" />
+                                </VBox>
+                            </header>
+                        </Column>
+                        <Column>
+                            <header>
+                                <VBox class="">                                   
+                                    <Label text="Cub TEO 2" class="customColumnHeader" />
+                                    <Text text="" class="sameHeight" />
+                                </VBox>
+                            </header>
+                        </Column>
+                        <Column>
+                            <header>
+                                <VBox class="">                                   
+                                    <Label text="Cub TEO 2" class="customColumnHeader" />
+                                    <Text text="" class="sameHeight" />
+                                </VBox>
+                            </header>
+                        </Column>
+                        <Column>
+                            <header>
+                                <VBox class="">                                   
+                                    <Label text="Cub TEO 2" class="customColumnHeader" />
+                                    <Text text="" class="sameHeight" />
+                                </VBox>
+                            </header>
+                        </Column>
+                        <Column>
+                            <header>
+                                <VBox class="">                                   
+                                    <Label text="Cub TEO 2" class="customColumnHeader" />
+                                    <Text text="" class="sameHeight" />
+                                </VBox>
+                            </header>
+                        </Column>
+                        <Column>
+                            <header>
+                                <VBox class="customColumnHeader">                                   
+                                    <Label text="Cub TEO 2" class="customColumnHeader" />
+                                    <Text text="" class="sameHeight" />
+                                </VBox>
+                            </header>
+                        </Column>
+                        <Column>
+                            <header>
+                                <VBox class="customColumnHeader">                                   
+                                    <Label text="Cub TEO 2" class="customColumnHeader" />
+                                    <Text text="" class="sameHeight" />
+                                </VBox>
+                            </header>
+                        </Column>
+                        <Column>
+                            <header>
+                                <VBox class="customColumnHeader">                                   
+                                    <Label text="Cub TEO 2" class="customColumnHeader" />
+                                    <Text text="" class="sameHeight" />
+                                </VBox>
+                            </header>
+                        </Column>
+                        <Column>
+                            <header>
+                                <VBox class="customColumnHeader">                                   
+                                    <Label text="Cub TEO 2" class="customColumnHeader" />
+                                    <Text text="" class="sameHeight" />
+                                </VBox>
+                            </header>
+                        </Column>
+                        <Column>
+                            <header>
+                                <VBox class="customColumnHeader">                                   
+                                    <Label text="Cub TEO 2" class="customColumnHeader" />
+                                    <Text text="" class="sameHeight" />
+                                </VBox>
+                            </header>
+                        </Column>
+                        <Column>
+                            <header>
+                                <VBox class="customColumnHeader">                                   
+                                    <Label text="Cub TEO 2" class="customColumnHeader" />
+                                    <Text text="" class="sameHeight" />
+                                </VBox>
+                            </header>
+                        </Column>
+                        <Column>
+                            <header>
+                                <VBox class="customColumnHeader">                                   
+                                    <Label text="Cub TEO 2" class="customColumnHeader" />
+                                    <Text text="" class="sameHeight" />
+                                </VBox>
+                            </header>
+                        </Column>
+                        
+                        <Column>
+                            <header>
+                                <VBox class="customColumnHeader">                                   
+                                    <Label text="Cub TEO 2" class="customColumnHeader" />
+                                    <Text text="" class="sameHeight" />
+                                </VBox>
+                            </header>
+                        </Column>
+                        <Column>
+                            <header>
+                                <VBox class="customColumnHeader">                                   
+                                    <Label text="Cub TEO 2" class="customColumnHeader" />
+                                    <Text text="" class="sameHeight" />
+                                </VBox>
+                            </header>
+                        </Column>
+                        <Column>
+                            <header>
+                                <VBox class="customColumnHeader">                                   
+                                    <Label text="Cub TEO 2" class="customColumnHeader" />
+                                    <Text text="" class="sameHeight" />
+                                </VBox>
+                            </header>
+                        </Column>
+                        <Column>
+                            <header>
+                                <VBox class="customColumnHeader">                                   
+                                    <Label text="Cub TEO 2" class="customColumnHeader" />
+                                    <Text text="" class="sameHeight" />
+                                </VBox>
+                            </header>
+                        </Column>
+                        <Column>
+                            <header>
+                                <VBox class="customColumnHeader">                                   
+                                    <Label text="Cub TEO 2" class="customColumnHeader" />
+                                    <Text text="" class="sameHeight" />
+                                </VBox>
+                            </header>
+                        </Column>
+                        <!-- Añadir más columnas según sea necesario -->
+                    </columns>
+                    <items>
+                        <ColumnListItem>
+                            <cells>
+                                <Text text="{Ruta}" class="boldAndLargeText" />
+                                <Text text="{TOT}" class="boldAndLargeText" />
+                                <Text text="{SCAN}" class="boldAndLargeText"  />
+                                <Text text="{FALTA}" class="boldAndLargeText"  />
+                                <Text text="{Cub TEO}" class="boldAndLargeText"  />
+                            </cells>
+                        </ColumnListItem>
+                    </items>
+                </Table>
+            </content>
+        </ScrollContainer>
+    </Page>
+</mvc:View>

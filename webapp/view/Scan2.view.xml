@@ -3,10 +3,10 @@
     xmlns="sap.m"
     xmlns:m="sap.m">
     
-    <Page title="Scaneamos todos los productos y los colocamos en la cubeta que corresponda. scan2">
+    <Page title="Scaneamos todos los productos y los colocamos en la cubeta que corresponda.">
         <VBox class="fullHeight">
             <HBox class="contentArea">
-                <!-- FlexBox occupying two-thirds of the width -->
+                <!-- FlexBox ocupa 75% del ancho -->
                 <VBox width="75%">
                     <FlexBox>
                         <VBox class="fullHeight" justifyContent="Start">
@@ -15,7 +15,7 @@
                                 <Button id="stop" text="STOP" type="Reject" press="onStopDialog" visible="{/isStarted}" icon="sap-icon://flag" />
                                 <Text text="{/puesto}" class="blackBackground" />
                                 <Text text="{/transporte}" class="blackBackground" />
-                                <Button text="Print Etiquetas" press="onGeneratePDF" icon="sap-icon://print" />
+                                <Button text="Print Etiquetas" press="onGeneratePDF" icon="sap-icon://print" enabled="{=${/printEtiquetas}}"/>
                               
                             </HBox>
                             
@@ -46,32 +46,59 @@
                     </FlexBox>
                 </VBox>
     
-                <!-- Table occupying one-third of the width -->
+                <!-- Table ocupando 1/4 del ancho-->
                 <VBox width="25%">
-                    <Table id="customTable" items="{path: '/tableData'}">
+                    <ScrollContainer height="100%" vertical="true">
+                    <Table id="customTableAvance" items="{path: '/tableData'}" >
                         <columns>
-                            <Column><Text text="Ruta" class="sameHeight" /></Column>
-                            <Column><Text text="TOT" class="sameHeight" /></Column>
-                            <Column><Text text="SCAN" class="sameHeight" /></Column>
-                            <Column><Text text="FALTA" class="sameHeight"  /></Column>
-                            <Column><Text text="Cub TEO" class="sameHeight" /></Column>
-                         <!--    <Column><Text text="C Real" /></Column>
-                            <Column><Text text="Pa" /></Column>-->
+                            <Column> 
+                                <header>
+                                    <VBox class="customColumnHeader">                                        
+                                        <Text text="RUTA" class="sameHeight" />
+                                        <Text text="Totales" class="sameHeight" />
+                                    </VBox>
+                                </header>
+                            </Column>
+                            <Column><header>
+                                <VBox class="customColumnHeader">                                    
+                                    <Text text="TOT" class="sameHeight" />
+                                    <Text text="{=${/totalP}}" class="sameHeight" />
+                                </VBox>
+                            </header></Column>
+                            <Column><header>
+                                <VBox class="customColumnHeader">                                    
+                                    <Text text="SCAN" class="sameHeight" />
+                                    <Text text="{=${/totalScan}}" class="sameHeight" />
+                                </VBox>
+                            </header></Column>
+                            <Column><header>
+                                <VBox class="customColumnHeader">                                    
+                                    <Text text="FALTA" class="sameHeight" />
+                                    <Text text="{=${/totalFalta}}" class="sameHeight" />
+                                </VBox>
+                            </header></Column>
+                            <Column><header>
+                                <VBox class="customColumnHeader">                                   
+                                    <Text text="Cub TEO" class="sameHeight" />
+                                    <Text text="" class="sameHeight" />
+                                </VBox>
+                            </header></Column>
                         </columns>
+                        
                         <items >
-                            <ColumnListItem>
+                           
+                                <ColumnListItem >
                                 <cells>
                                     <Text  text="{Ruta}" class="boldAndLargeText" />
                                     <Text text="{TOT}" class="boldAndLargeText" />
                                     <Text text="{SCAN}"  class="boldAndLargeText"  />
                                     <Text text="{FALTA}"  class="boldAndLargeText"  />
                                     <Text text="{Cub TEO}" class="boldAndLargeText"  />
-                                <!--    <Input value="{C Real}" liveChange="onInputChange1" />
-                                    <Input value="{Pa}" liveChange="onInputChange2" />-->
                                 </cells>
                             </ColumnListItem>
                         </items>
                     </Table>
+                </ScrollContainer >
                 </VBox>
             </HBox>
         </VBox>

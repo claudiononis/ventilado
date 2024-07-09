@@ -140,7 +140,7 @@
     justify-content: center;
 }
 .sameHeight {
-    height: 35px; /* Ajusta según sea necesario */
+    height: 20px; /* Ajusta según sea necesario */
     display: flex;
     align-items: center;
 }
@@ -153,7 +153,7 @@
 }
 .boldAndLargeText {
     font-weight: bold;
-    font-size: 20px; /* Ajusta según sea necesario */
+    font-size: 15px; /* Ajusta según sea necesario */
     height: 30px;
 }
 
@@ -189,3 +189,23 @@
     width: 100%;
     margin-top: 0.5rem;
 }
+
+/*  customStyles.css */
+.customMessageBox .sapMMessageBox {
+    width: 500px; /* Ajusta el ancho del cuadro de mensaje */
+    height: auto; /* Permite que la altura se ajuste automáticamente */
+}
+
+.customMessageBox .sapMText {
+    font-size: 1.5rem; /* Ajusta el tamaño del texto */
+    color: red; /* Cambia el color del texto a rojo */
+}
+/* Rotacion a 45 grados de texto */
+.customColumnHeader .sapMLabel {
+    transform: rotate(-45deg); /* Ajusta el ángulo de rotación según tus necesidades */
+    white-space: nowrap; /* Evita que el texto se envuelva en una nueva línea */
+    text-align: left; /* Alinea el texto a la izquierda */
+    margin-top: 10px; /* Ajusta el margen superior si es necesario */
+    margin-bottom: 10px; /* Ajusta el margen superior si es necesario */
+}
+

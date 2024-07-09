@@ -47,7 +47,7 @@
                     </ColumnListItem>
                 </items>
             </Table>
-            <Button text="Confirmar" type="Emphasized" press="onStopConfirm" />
+            <Button text="Confirmar" type="Emphasized" press="onStopConfirm"/>
         </VBox>
     </Dialog>
     

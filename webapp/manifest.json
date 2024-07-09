@@ -111,8 +111,8 @@
           "viewType": "XML",
           "transition": "slide",
           "clearControlAggregation": false,
-          "viewId": "View1",
-          "viewName": "View1"
+          "viewId": "Desconsolidado",
+          "viewName": "Desconsolidado"
         },
         "scan": {
           "viewType": "XML",
