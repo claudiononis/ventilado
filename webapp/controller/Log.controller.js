@@ -17,7 +17,7 @@ sap.ui.define([
     var sPtoPlanif ;
     var sUsuario;
     var sFecha; 
-    return Controller.extend("ventilado.ventilado.controller.Desconsolidado", {
+    return Controller.extend("ventilado.ventilado.controller.Log", {
          
         onInit: function () {
             sPuesto = sessionStorage.getItem("puesto") || "";

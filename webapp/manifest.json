@@ -104,6 +104,11 @@
           "name": "Scan",
           "pattern": "Scan",
           "target": "scan"
+        },
+        {
+          "name": "Desconsolidado",
+          "pattern": "Desc",
+          "target": "Desc"
         }
       ],
       "targets": {
@@ -111,14 +116,20 @@
           "viewType": "XML",
           "transition": "slide",
           "clearControlAggregation": false,
-          "viewId": "Desconsolidado",
-          "viewName": "Desconsolidado"
+          "viewId": "View1",
+          "viewName": "View1"
         },
         "scan": {
           "viewType": "XML",
           "transition": "slide",
           "clearControlAggregation": false,
           "viewName": "Scan2"
+        },
+        "Desc": {
+          "viewType": "XML",
+          "transition": "slide",
+          "clearControlAggregation": false,
+          "viewName": "Desconsolidado"
         }
       }
     },

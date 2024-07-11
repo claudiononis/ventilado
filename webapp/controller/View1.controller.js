@@ -54,7 +54,10 @@ sap.ui.define([
                const oRouter = sap.ui.core.UIComponent.getRouterFor(this);
                oRouter.navTo("Scan");                 
         },
-
+        onCierrePress:function(){
+            const oRouter = sap.ui.core.UIComponent.getRouterFor(this);
+            oRouter.navTo("Desconsolidado"); 
+        },      
 
         /*  Cuando se pulsa "Buscar datos" se ejecuta esta funcion
             Se busca el modelo y se llama a la "Function import" del back end para buscar los datos  del transporte

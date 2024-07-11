@@ -1,4 +1,4 @@
-<mvc:View controllerName="ventilado.ventilado.controller.Desconsolidado"
+<mvc:View controllerName="ventilado.ventilado.controller.Log"
     xmlns:mvc="sap.ui.core.mvc" displayBlock="true"
     xmlns="sap.m"
     xmlns:m="sap.m"

@@ -140,7 +140,7 @@
     justify-content: center;
 }
 .sameHeight {
-    height: 20px; /* Ajusta según sea necesario */
+    height: 50px; /* Ajusta según sea necesario */
     display: flex;
     align-items: center;
 }
@@ -202,6 +202,7 @@
 }
 /* Rotacion a 45 grados de texto */
 .customColumnHeader .sapMLabel {
+    height: 50px;
     transform: rotate(-45deg); /* Ajusta el ángulo de rotación según tus necesidades */
     white-space: nowrap; /* Evita que el texto se envuelva en una nueva línea */
     text-align: left; /* Alinea el texto a la izquierda */
@@ -209,3 +210,31 @@
     margin-bottom: 10px; /* Ajusta el margen superior si es necesario */
 }
 
+
+
+.customTable {
+    width: 100%;
+    height: 100%;
+    overflow: auto;
+}
+.customTable .sapMListTblCell {
+    white-space: nowrap;
+}
+
+.customColumnHeader2 {
+    line-height: 2.5rem;
+    margin-top: 0.5rem
+}
+
+
+.sapUiTableCell {
+    border-bottom: 1px solid #d3d3d3;
+}
+
+.sapUiTableCell:first-child {
+    border-left: 1px solid #d3d3d3;
+}
+
+.sapUiTableCell:last-child {
+    border-right: 1px solid #d3d3d3;
+}

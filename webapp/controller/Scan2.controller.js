@@ -148,6 +148,7 @@ sap.ui.define([
                         "RAZONSOCIAL" : registro.NombreDestinatario,
                         "DIRECCION"   : registro.Calle,
                         "LOCALIDAD"   :  registro.LugarDestinatario,
+                        "CODIGOINTERNO"   :  registro.CodigoInterno,
 
                       //  fecha: registro.fecha,  //Suponiendo que la fecha es la misma para todos los registros de la misma ruta
                       //  transportista: registro.transportista  // Suponiendo que el transportista es el mismo para todos los registros de la misma ruta
@@ -171,7 +172,7 @@ sap.ui.define([
                 resultado[ruta]["LOCALIDAD"] = registro.LugarDestinatario;
                 resultado[ruta]["C Real"] = registro.Cubre;
                 resultado[ruta]["Pa"] = registro.Pa;
-                     
+                resultado[ruta]["Pa"] = registro.CodigoInterno     
                 // Aquí deberías agregar lógica para calcular SCAN, FALTA, Cub TEO, C Real, Pa
             });
             
@@ -194,7 +195,30 @@ sap.ui.define([
             this._checkNetworkStatus();
         },
 
-/****** Inicio: Arranca proceso de  escaneo  *****************************************  ***/
+/******  Borrar la entrada */   
+
+        onClearEanInput:function(){
+            var oModel = this.getView().getModel();
+            var cantidad = this.getView().byId("txtCantidad");
+            var sRuta = this.getView().byId("txtRuta");
+            var descripcion = this.getView().byId("lDescripcion");
+            var Ean = this.getView().byId("eanInput");
+            var ci = this.getView().byId("edtCI");
+            oModel.setProperty("/ruta", 0);
+            oModel.setProperty("/cantidad", 0);               
+            oModel.setProperty("/ean", '');
+            oModel.setProperty("/id", 0);
+            oModel.setProperty("/isArrowVisible", false);
+            
+            // Actualiza la pantalla
+            cantidad.setText('');
+            sRuta.setText('');
+            descripcion.setText('');
+            Ean.setValue('');
+            ci.setText('');
+        },
+
+/****** Inicio: Arranca proceso de  escaneo  ********************************************/
 
         onStartPress:function (){
 
@@ -479,7 +503,10 @@ sap.ui.define([
 
 
 //********* fin escaneo **************************/
+//******* Abre pagina de ventilado- Cierre */
+onCierrePress:function(){
 
+},
 //*******  Funcion para descargar las etiquetas  ****** */ 
         onGeneratePDF: function () {
 
