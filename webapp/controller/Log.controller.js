@@ -115,10 +115,10 @@ sap.ui.define([
                 // Agregar o actualizar la cantidad escaneada para la ruta correspondiente
                 datosAgrupados[codInterno][ruta] = cantidadEscaneada;
                  // Agregar o actualizar los totales por ruta
-    if (!totalesPorRuta[ruta]) {
-        totalesPorRuta[ruta] = { CantidadTotal: 0, Entrega: entrega };
-    }
-    totalesPorRuta[ruta].CantidadTotal += cantidadEscaneada;
+                if (!totalesPorRuta[ruta]) {
+                    totalesPorRuta[ruta] = { CantidadTotal: 0, Entrega: entrega };
+                }
+                totalesPorRuta[ruta].CantidadTotal += cantidadEscaneada;
             });
             
             // Convertir el objeto de datos agrupados en un array
