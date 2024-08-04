@@ -9,19 +9,19 @@
                     <VBox>
                         <HBox class="compactMargin inputSection">
                             <Label text="Puesto:" class="inputLabel"/>
-                            <Input id="puesto" class="inputField"/>
+                            <Input id="puesto" class="inputField" required="true"/>
                         </HBox>
                         <HBox class="compactMargin inputSection">
                             <Label text="Reparto:" class="inputLabel"/>
-                            <Input id="reparto" class="inputField"/>
+                            <Input id="reparto" class="inputField" required="true"/>
                         </HBox>
                         <HBox class="compactMargin inputSection">
                             <Label text="Pto de Planificación:" class="inputLabel"/>
-                            <Input id="pto_planif" class="inputField"/>
+                            <Input id="pto_planif" class="inputField" required="true"/>
                         </HBox>
                         <HBox class="compactMargin inputSection">
                             <Label text="Preparador:" class="inputLabel"/>
-                            <Input id="Usuario" class="inputField"/>
+                            <Input id="Usuario" class="inputField" required="true"/>
                         </HBox>
                         <HBox class="compactMargin inputSection">
                             <Label text="Fecha:" class="inputLabel"/>
@@ -34,8 +34,8 @@
                         <Button text="Buscar datos" press="onBuscarPress" type="Emphasized" class="actionButton"/>
                         <Button id="btScan" text="Scan de productos" press="onScanPress" enabled="false" class="actionButton"/>
                         <Button id="btLog" text="Ver Log" press="onLogPress" enabled="false" class="actionButton"/>
-                        <Button id="btAxP" text="Avance x Producto" press="onAvancePPress" enabled="false" class="actionButton"/>
-                        <Button id="btAxE" text="Avance x Entrega" press="onAvanceEPress" enabled="false" class="actionButton"/>
+                        <Button id="btAvance" text="Avance" press="onAvancePPress" enabled="false" class="actionButton"/>
+                        <Button id="btDesconsolidado" text="Desafectacion" press="onDesconsolidadoPress" enabled="false" type="Reject" class="actionButton"/>
                         <Button id="btCierre" text="Cierre" press="onCierrePress" enabled="false" type="Reject" class="actionButton"/>
                     </VBox>
                 </Panel>

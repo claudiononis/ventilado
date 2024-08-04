@@ -5,7 +5,7 @@
     xmlns:l="sap.ui.layout"
     height="100%" width="100%">
 
-    <Page title="Ventilado">
+    <Page title="Log">
         
         <ScrollContainer width="100%" height="100%" horizontal="true" vertical="true">
                 <Table items="{path: '/tableData'}" fixedLayout="Strict" class="sapUiResponsiveMargin sapUiTable" growing="true"
@@ -14,340 +14,164 @@
                     <columns>
                         <Column  width="100px">
                             <header>
-                                <VBox class="customColumnHeader2" >                                        
-                                    <Label text="Transporte" class="customColumnHeader2"  wrapping="false" />
-                                    <Text text="Control" class="sameHeight" wrapping="false" />
-                                    <Text text="Cod. Interno" class="sameHeight" wrapping="false" />
+                                <VBox >                                        
+                                    <Label text=""   wrapping="false" />
+                                    <Text text="" class="sameHeight" wrapping="false" />
+                                    <Text text="Id Scan" class="sameHeight" wrapping="false" />
                                 </VBox>
                             </header>
                         </Column>
-                        <Column width="250px">
+                        <Column  width="140px">
                             <header>
-                                <VBox class="customColumnHeader2" >                                        
-                                    <Label text="{/tableData/0/Transporte}" class="customColumnHeader2" wrapping="false" />
+                                <VBox >                                        
+                                    <Label text="Transporte"   wrapping="false" />
+                                    <Text text="Prod. Escaneados" class="sameHeight" wrapping="false" />
+                                    <Text text="Cod. EAN" class="sameHeight" />
+                                </VBox>
+                            </header>
+                        </Column>
+                        <Column  width="120px">
+                            <header>
+                                <VBox  >                                        
+                                    <Label text="{/Transporte}"   wrapping="false" />
+                                    <Text text="{/totalCantidadAsig}" class="sameHeight" wrapping="false" />
+                                    <Text text="Cod. Interno" class="sameHeight"  />
+                                </VBox>
+                            </header>
+                        </Column>
+                        <Column width="290px">
+                            <header>
+                                <VBox >                                        
+                                    <Label text="" wrapping="false" />
                                     <Text text="" wrapping="false" class="sameHeight"  />
-                                    <Text text="Descrip. del Producto" class="sameHeight" wrapping="false" />
+                                    <Text text="Descrip. del Producto" class="sameHeight" />
                                 </VBox>
                             </header>
                         </Column>
                         <Column width="100px">
                             <header>
-                              <VBox class="customColumnHeader2">                                        
-                                    <Label text="Entrega →" class="customColumnHeader2" wrapping="false" />
-                                    <Text text=" Tot." class="sameHeight"/>
+                              <VBox >                                        
+                                    <Label text="" wrapping="false" />
+                                    <Text text="" class="sameHeight"/>
+                                    <Text text="Ruta Asig." class="sameHeight"  />
+                                </VBox>
+                            </header>
+                        </Column>
+                        <Column width="200px">
+                            <header>
+                                <VBox >                                        
+                                    <Label text="" wrapping="false" />
+                                    <Text text="" class="sameHeight"/>
+                                    <Text text="Entrega+Prod." class="sameHeight"  />
+                                </VBox>
+                            </header>
+                        </Column>
+                        <Column width="130px">
+                            <header>
+                                <VBox >                                    
+                                    <Label text=""   wrapping="false" />
+                                    <Text text=""   class="sameHeight"/>
+                                    <Text text="Asig." class="sameHeight"  />
+                                </VBox>
+                            </header>
+                        </Column>
+                        <Column width="70px">
+                            <header>
+                                <VBox >                                    
+                                    <Label text=""  wrapping="false" />
                                     <Text text="" class="sameHeight"  />
+                                    <Text text="Tipo Log" class="sameHeight"/>
                                 </VBox>
                             </header>
                         </Column>
-                        <Column width="70px">
+                        <Column width="180px">
                             <header>
-                                <VBox class="customColumnHeader">                                        
-                                    <Label text="{/totalesPorRuta/0/Entrega}" class="customColumnHeader sameHeight" wrapping="false" />
-                                    <Text text="{/totalesPorRuta/0/CantidadTotal}" class="sameHeight" />
-                                    <Text text="{/totalesPorRuta/0/Ruta}" class="sameHeight"  />
+                                <VBox >                                    
+                                    <Label text=""  wrapping="false" />
+                                    <Text text="" class="sameHeight"  />
+                                    <Text text="Fecha y Hora" class="sameHeight"/>
                                 </VBox>
                             </header>
                         </Column>
-                        <Column width="70px">
+                        <Column width="120px">
                             <header>
-                                <VBox class="customColumnHeader">                                    
-                                    <Label text="{/totalesPorRuta/1/Entrega}" class="customColumnHeader sameHeight"  wrapping="false" />
-                                    <Text text="{/totalesPorRuta/1/CantidadTotal}"   class="sameHeight"/>
-                                    <Text text="{/totalesPorRuta/1/Ruta}" class="sameHeight"  />
+                                <VBox >                                    
+                                    <Label text=""  wrapping="false" />
+                                    <Text text="" class="sameHeight"  />
+                                    <Text text="Preparador" class="sameHeight"/>
                                 </VBox>
                             </header>
                         </Column>
-                        <Column width="70px">
+                        <Column width="110px">
                             <header>
-                                <VBox class="customColumnHeader">                                    
-                                    <Label text="{/totalesPorRuta/2/Entrega}" class="customColumnHeader sameHeight"  wrapping="false" />
-                                    <Text text="{/totalesPorRuta/2/CantidadTotal}" class="sameHeight"  />
-                                    <Text text="{/totalesPorRuta/2/Ruta}" class="sameHeight"/>
+                                <VBox >                                    
+                                    <Label text=""  wrapping="false" />
+                                    <Text text="" class="sameHeight"  />
+                                    <Text text="Cliente" class="sameHeight"/>
                                 </VBox>
                             </header>
                         </Column>
-                        <Column width="70px">
+                        <Column width="110px">
                             <header>
-                                <VBox class="customColumnHeader">                                    
-                                    <Label text="{/totalesPorRuta/3/Entrega}" class="customColumnHeader sameHeight"  wrapping="false" />
-                                    <Text text="{=${/totalScan}}" class="sameHeight"  />
-                                    <Text text="" class="sameHeight"/>
+                                <VBox >                                    
+                                    <Label text=""  wrapping="false" />
+                                    <Text text="" class="sameHeight"  />
+                                    <Text text="Entrega" class="sameHeight"/>
                                 </VBox>
                             </header>
                         </Column>
-                        <Column width="70px">
+                        <Column width="100px">
+                            <header >
+                                <VBox>                                    
+                                    <Label text=""  wrapping="false" />
+                                    <Text text="" class="sameHeight"  />
+                                    <Text text="Transporte" class="sameHeight"/>
+                                </VBox>
+                            </header>
+                        </Column>
+                        <Column width="100px">
                             <header>
-                                <VBox class="customColumnHeader">                                    
-                                    <Label text="{/totalesPorRuta/4/Entrega}" class="customColumnHeader sameHeight"  wrapping="false" />
-                                    <Text text="{=${/totalScan}}" class="sameHeight"  />
-                                    <Text text="" class="sameHeight"/>
+                                <VBox>                                    
+                                    <Label text="" wrapping="false" />
+                                    <Text text="" class="sameHeight"  />
+                                    <Text text="Cant. Asig." class="sameHeight"/>
                                 </VBox>
                             </header>
                         </Column>
-                        <Column width="70px">
+                        <Column width="120px">
                             <header>
-                                <VBox class="customColumnHeader">                                    
-                                    <Label text="{/totalesPorRuta/5/Entrega}" class="customColumnHeader sameHeight"  wrapping="false" />
-                                    <Text text="{=${/totalScan}}" class="sameHeight"  />
-                                    <Text text="" class="sameHeight"/>
+                                <VBox>                                    
+                                    <Label text=""  wrapping="false" />
+                                    <Text text="" class="sameHeight"  />
+                                    <Text text="Ruta Conf." class="sameHeight"/>
                                 </VBox>
                             </header>
                         </Column>
-                        <Column width="70px">
-                            <header>
-                                <VBox class="customColumnHeader">                                    
-                                    <Label text="{/totalesPorRuta/6/Entrega}" class="customColumnHeader sameHeight"  wrapping="false" />
-                                    <Text text="{=${/totalScan}}" class="sameHeight"  />
-                                    <Text text="" class="sameHeight"/>
-                                </VBox>
-                            </header>
-                        </Column>
-                        <Column width="70px">
-                            <header>
-                                <VBox class="customColumnHeader">                                    
-                                    <Label text="{/totalesPorRuta/7/Entrega}" class="customColumnHeader sameHeight"  wrapping="false" />
-                                    <Text text="{=${/totalScan}}" class="sameHeight"  />
-                                    <Text text="" class="sameHeight"/>
-                                </VBox>
-                            </header>
-                        </Column>
-                        <Column width="70px">
-                            <header>
-                                <VBox class="customColumnHeader">                                    
-                                    <Label text="{/totalesPorRuta/8/Entrega}" class="customColumnHeader sameHeight"  wrapping="false" />
-                                    <Text text="{=${/totalScan}}" class="sameHeight"  />
-                                    <Text text="" class="sameHeight"/>
-                                </VBox>
-                            </header>
-                        </Column>
-                        <Column width="70px">
-                            <header>
-                                <VBox class="customColumnHeader">                                    
-                                    <Label text="{/totalesPorRuta/9/Entrega}" class="customColumnHeader sameHeight"  wrapping="false" />
-                                    <Text text="{=${/totalScan}}" class="sameHeight"  />
-                                    <Text text="" class="sameHeight"/>
-                                </VBox>
-                            </header>
-                        </Column>
-                        <Column width="70px">
-                            <header>
-                                <VBox class="customColumnHeader">                                    
-                                    <Label text="{/totalesPorRuta/10/Entrega}" class="customColumnHeader sameHeight"  wrapping="false" />
-                                    <Text text="{=${/totalScan}}" class="sameHeight"  />
-                                    <Text text="" class="sameHeight"/>
-                                </VBox>
-                            </header>
-                        </Column>
-                        <Column width="70px">
-                            <header>
-                                <VBox class="customColumnHeader">                                    
-                                    <Label text="{/totalesPorRuta/11/Entrega}" class="customColumnHeader sameHeight"  wrapping="false" />
-                                    <Text text="{=${/totalScan}}" class="sameHeight"  />
-                                    <Text text="" class="sameHeight"/>
-                                </VBox>
-                            </header>
-                        </Column>
-                        <Column width="70px">
-                            <header>
-                                <VBox class="customColumnHeader">                                    
-                                    <Label text="{/totalesPorRuta/12/Entrega}" class="customColumnHeader sameHeight"  wrapping="false" />
-                                    <Text text="{=${/totalScan}}" class="sameHeight"  />
-                                    <Text text="" class="sameHeight"/>
-                                </VBox>
-                            </header>
-                        </Column>
-                        <Column width="70px">
-                            <header>
-                                <VBox class="customColumnHeader">                                    
-                                    <Label text="{/totalesPorRuta/13/Entrega}" class="customColumnHeader sameHeight"  wrapping="false" />
-                                    <Text text="{=${/totalScan}}" class="sameHeight"  />
-                                    <Text text="" class="sameHeight"/>
-                                </VBox>
-                            </header>
-                        </Column>
-                        <Column width="70px">
-                            <header>
-                                <VBox class="customColumnHeader">                                    
-                                    <Label text="{/totalesPorRuta/14/Entrega}" class="customColumnHeader sameHeight"  wrapping="false" />
-                                    <Text text="{=${/totalScan}}" class="sameHeight"  />
-                                    <Text text="" class="sameHeight"/>
-                                </VBox>
-                            </header>
-                        </Column>
-                        
-                        <Column width="70px">
-                            <header>
-                                <VBox class="customColumnHeader">                                    
-                                    <Label text="{/totalesPorRuta/15/Entrega}" class="customColumnHeader sameHeight"  wrapping="false" />
-                                    <Text text="{=${/totalScan}}" class="sameHeight"  />
-                                    <Text text="" class="sameHeight"/>
-                                </VBox>
-                            </header>
-                        </Column>
-                        <Column width="70px">
-                            <header>
-                                <VBox class="customColumnHeader">                                    
-                                    <Label text="{/totalesPorRuta/16/Entrega}" class="customColumnHeader sameHeight"  wrapping="false" />
-                                    <Text text="{=${/totalScan}}" class="sameHeight"  />
-                                    <Text text="" class="sameHeight"/>
-                                </VBox>
-                            </header>
-                        </Column>
-                        <Column width="70px">
-                            <header>
-                                <VBox class="customColumnHeader">                                    
-                                    <Label text="{/totalesPorRuta/17/Entrega}" class="customColumnHeader sameHeight"  wrapping="false" />
-                                    <Text text="{=${/totalScan}}" class="sameHeight"  />
-                                    <Text text="" class="sameHeight"/>
-                                </VBox>
-                            </header>
-                        </Column>
-                        <Column width="70px">
-                            <header>
-                                <VBox class="customColumnHeader">                                    
-                                    <Label text="{/totalesPorRuta/18/Entrega}" class="customColumnHeader sameHeight"  wrapping="false" />
-                                    <Text text="{=${/totalScan}}" class="sameHeight"  />
-                                    <Text text="" class="sameHeight"/>
-                                </VBox>
-                            </header>
-                        </Column>
-                        <Column width="70px">
-                            <header>
-                                <VBox class="customColumnHeader">                                    
-                                    <Label text="{/totalesPorRuta/19/Entrega}" class="customColumnHeader sameHeight"  wrapping="false" />
-                                    <Text text="{=${/totalScan}}" class="sameHeight"  />
-                                    <Text text="" class="sameHeight"/>
-                                </VBox>
-                            </header>
-                        </Column>
-                        <Column width="70px">
-                            <header>
-                                <VBox class="customColumnHeader">                                    
-                                    <Label text="{/totalesPorRuta/20/Entrega}" class="customColumnHeader sameHeight"  wrapping="false" />
-                                    <Text text="{=${/totalScan}}" class="sameHeight"  />
-                                    <Text text="" class="sameHeight"/>
-                                </VBox>
-                            </header>
-                        </Column>
-                        <Column width="70px">
-                            <header>
-                                <VBox class="customColumnHeader">                                    
-                                    <Label text="{/totalesPorRuta/21/Entrega}" class="customColumnHeader sameHeight"  wrapping="false" />
-                                    <Text text="{=${/totalScan}}" class="sameHeight"  />
-                                    <Text text="" class="sameHeight"/>
-                                </VBox>
-                            </header>
-                        </Column>
-                        <Column width="70px">
-                            <header>
-                                <VBox class="customColumnHeader">                                    
-                                    <Label text="{/totalesPorRuta/22/Entrega}" class="customColumnHeader sameHeight"  wrapping="false" />
-                                    <Text text="{=${/totalScan}}" class="sameHeight"  />
-                                    <Text text="" class="sameHeight"/>
-                                </VBox>
-                            </header>
-                        </Column>
-                        <Column width="70px">
-                            <header>
-                                <VBox class="customColumnHeader">                                    
-                                    <Label text="{/totalesPorRuta/23/Entrega}" class="customColumnHeader sameHeight"  wrapping="false" />
-                                    <Text text="{=${/totalScan}}" class="sameHeight"  />
-                                    <Text text="" class="sameHeight"/>
-                                </VBox>
-                            </header>
-                        </Column>
-                        <Column width="70px">
-                            <header>
-                                <VBox class="customColumnHeader">                                    
-                                    <Label text="{/totalesPorRuta/24/Entrega}" class="customColumnHeader sameHeight"  wrapping="false" />
-                                    <Text text="{=${/totalScan}}" class="sameHeight"  />
-                                    <Text text="" class="sameHeight"/>
-                                </VBox>
-                            </header>
-                        </Column>
-                        <Column width="70px">
-                            <header>
-                                <VBox class="customColumnHeader">                                    
-                                    <Label text="{/totalesPorRuta/25/Entrega}" class="customColumnHeader sameHeight"  wrapping="false" />
-                                    <Text text="{=${/totalScan}}" class="sameHeight"  />
-                                    <Text text="" class="sameHeight"/>
-                                </VBox>
-                            </header>
-                        </Column>
-                        <Column width="70px">
-                            <header>
-                                <VBox class="customColumnHeader">                                    
-                                    <Label text="{/totalesPorRuta/26/Entrega}" class="customColumnHeader sameHeight"  wrapping="false" />
-                                    <Text text="{=${/totalScan}}" class="sameHeight"  />
-                                    <Text text="" class="sameHeight"/>
-                                </VBox>
-                            </header>
-                        </Column>
-                        <Column width="70px">
-                            <header>
-                                <VBox class="customColumnHeader">                                    
-                                    <Label text="{/totalesPorRuta/27/Entrega}" class="customColumnHeader sameHeight"  wrapping="false" />
-                                    <Text text="{=${/totalScan}}" class="sameHeight"  />
-                                    <Text text="" class="sameHeight"/>
-                                </VBox>
-                            </header>
-                        </Column>
-                        <Column width="70px">
-                            <header>
-                                <VBox class="customColumnHeader">                                    
-                                    <Label text="{/totalesPorRuta/28/Entrega}" class="customColumnHeader sameHeight"  wrapping="false" />
-                                    <Text text="{=${/totalScan}}" class="sameHeight"  />
-                                    <Text text="" class="sameHeight"/>
-                                </VBox>
-                            </header>
-                        </Column>
-                        <Column width="70px">
-                            <header>
-                                <VBox class="customColumnHeader">                                    
-                                    <Label text="{/totalesPorRuta/29/Entrega}" class="customColumnHeader sameHeight"  wrapping="false" />
-                                    <Text text="{=${/totalScan}}" class="sameHeight"  />
-                                    <Text text="" class="sameHeight"/>
-                                </VBox>
-                            </header>
-                        </Column>
+                       
+                       
                         
                     </columns>
                     <items>
                         <ColumnListItem>
                             <cells>
-                                <Text text="{CodInterno}" class="boldAndLargeText" />
-                                <Text text="{Descripcion}" class="boldAndLargeText" />
-                                <Text text="" class="boldAndLargeText"  />
-                                <Text text="{01}" class="boldAndLargeText"  />
-                                <Text text="{02}" class="boldAndLargeText"  />
-                                <Text text="{03}" class="boldAndLargeText"  />
-                                <Text text="{04}" class="boldAndLargeText"  />
-                                <Text text="{05}" class="boldAndLargeText"  />
-                                <Text text="{06}" class="boldAndLargeText"  />
-                                <Text text="{07}" class="boldAndLargeText"  />
-                                <Text text="{08}" class="boldAndLargeText"  />
-                                <Text text="{09}" class="boldAndLargeText"  />
-                                <Text text="{10}" class="boldAndLargeText"  />
-                                <Text text="{11}" class="boldAndLargeText"  />
-                                <Text text="{12}" class="boldAndLargeText"  />
-                                <Text text="{13}" class="boldAndLargeText"  />
-                                <Text text="{14}" class="boldAndLargeText"  />
-                                <Text text="{15}" class="boldAndLargeText"  />
-                                <Text text="{16}" class="boldAndLargeText"  />
-                                <Text text="{17}" class="boldAndLargeText"  />
-                                <Text text="{18}" class="boldAndLargeText"  />
-                                <Text text="{19}" class="boldAndLargeText"  />
-                                <Text text="{20}" class="boldAndLargeText"  />  
-                                <Text text="{21}" class="boldAndLargeText"  />
-                                <Text text="{22}" class="boldAndLargeText"  />
-                                <Text text="{23}" class="boldAndLargeText"  />
-                                <Text text="{24}" class="boldAndLargeText"  />
-                                <Text text="{25}" class="boldAndLargeText"  />
-                                <Text text="{26}" class="boldAndLargeText"  />
-                                <Text text="{27}" class="boldAndLargeText"  />
-                                <Text text="{28}" class="boldAndLargeText"  />
-                                <Text text="{29}" class="boldAndLargeText"  />
-                                <Text text="{30}" class="boldAndLargeText"  />
+                                <Text text="{IdScan}" class="boldAndLargeText" />
+                                <Text text="{Ean}" class="boldAndLargeText" />
+                                <Text text="{CodigoInterno}" class="boldAndLargeText" />
+                                <Text text="{Descricion}" class="boldAndLargeText" />
+                                <Text text="{RutaAsig}" class="boldAndLargeText" />
+                                <Text text="{EntreProd}" class="boldAndLargeText" />
+                                <Text text="{Asign}" class="boldAndLargeText" />
+                                
+                                <Text text="{TipoLog}" class="boldAndLargeText" />
+                                <Text text="{FechaHora}" class="boldAndLargeText" />
+                                <Text text="{Preparador}" class="boldAndLargeText" />
+                                <Text text="{Cliente}" class="boldAndLargeText" />
+                                
+                                <Text text="{Entrega}" class="boldAndLargeText" />
+                                <Text text="{Transporte}" class="boldAndLargeText" />
+                                <Text text="{cantidadAsig}" class="boldAndLargeText" />
+                                <Text text="{RutaConf}" class="boldAndLargeText" />
+                                            
                             </cells>
                         </ColumnListItem>
                     </items>

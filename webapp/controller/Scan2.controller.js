@@ -11,21 +11,46 @@ sap.ui.define([
 
 ], function (Controller, MessageToast, PDFViewer,Fragment,JSONModel,ODataModel,Filter,FilterOperator,MessageBox) {
     "use strict";
-    var ctx= this;  // Variabl eglobal en el controlador para guardar el contexto
+    var ctx= this;  // Variable global en el controlador para guardar el contexto
     var sTransporte;
     var sPuesto ;
     var sReparto ;
     var sPtoPlanif ;
     var sUsuario;
     var sFecha; 
+    var maxAdicChar2 = 0;
     return Controller.extend("ventilado.ventilado.controller.Scan2", {
          
-        onInit: function () {
-            sPuesto = sessionStorage.getItem("puesto") || "";
-            sReparto = sessionStorage.getItem("reparto") || "";
-            sPtoPlanif = sessionStorage.getItem("pto_planif") || "";
-            sUsuario = sessionStorage.getItem("usuario") || "";
-            sFecha = sessionStorage.getItem("fecha") || new Date().toISOString().slice(0, 10);
+        onInit: async function () {
+            this._dbConnections = []; // Array para almacenar conexiones abiertas
+             // Obtener el router y attachRouteMatched
+             var oRouter = sap.ui.core.UIComponent.getRouterFor(this);
+             oRouter.getRoute("Log").attachMatched(this.onRouteMatched, this);
+ 
+             // Manejar eventos de navegación
+             window.addEventListener('beforeunload', this._handleUnload.bind(this));
+             window.addEventListener('popstate', this._handleUnload.bind(this));
+             // Ejecutar acciones iniciales
+            await this.ejecutarAcciones();
+             // Obtener el valor máximo de AdicChar2
+             maxAdicChar2 =   await this.obtenerMaxAdicChar2();
+             
+        },
+
+        onRouteMatched: function () {
+            // Ejecutar acciones cada vez que la ruta es navegada
+            this.ejecutarAcciones();
+        },
+
+        ejecutarAcciones: async function () {            
+            // Lerr datos locales
+            sPuesto=localStorage.getItem('sPuesto');
+            sReparto = localStorage.getItem('sReparto');
+            sPtoPlanif = localStorage.getItem('sPtoPlanif');
+            sUsuario = localStorage.getItem('sPreparador');
+            //completo con ceros            
+            sReparto = sReparto.padStart(10, '0');
+            sPtoPlanif = sPtoPlanif.padStart(4, '0');
      
             this._checkNetworkStatus();  // funcion para que el navegador controle la conexion a internet
             this._fetchCodConfirmacionData(); // Llamar a la función para leer los Codigos de confirmacion de ruta del backend                  
@@ -37,6 +62,17 @@ sap.ui.define([
         },
 
 /****** Inicio: Obtiene los datos de la Base local agrupa x Ruta y arma  la tabla de avance  */
+obtenerMaxAdicChar2: async function () {
+    let datos = await this.obtenerDatosDeIndexedDB();
+    let maxAdicChar2 = 0;
+    datos.forEach((item) => {
+        let valorAdicChar2 = parseInt(item.AdicChar2, 10);
+        if (!isNaN(valorAdicChar2) && valorAdicChar2 > maxAdicChar2) {
+            maxAdicChar2 = valorAdicChar2;
+        }
+    });
+    return maxAdicChar2;
+},
         obtenerYProcesarDatos: async function () {
             try {
                 let datos = await this.obtenerDatosDeIndexedDB();
@@ -51,10 +87,13 @@ sap.ui.define([
                 var totalFalta = resultado.reduce(function(accumulator, currentValue) {
                     return accumulator + Number(currentValue.FALTA);
                 }, 0);
+                var totalCubTeo = resultado.reduce(function(accumulator, currentValue) {
+                    return accumulator + Number(currentValue["Cub TEO"]);
+                }, 0);
                 //Recupera el estado del transporte
 
                 // Nombres de las columnas
-                var columnNames = ["Ruta", "TOT", "SCAN", "FALTA", "Cub TEO", "C Real", "Pa"];
+                var columnNames = ["Ruta", "CLIENTE", "RAZONSOCIAL","TOT", "SCAN", "FALTA", "Cub TEO", "C Real", "Pa"];
         
                 // Mapear arrayResultado a la estructura de tableDataArray
                 var tableDataArray = resultado.map((registro) => {
@@ -72,10 +111,13 @@ sap.ui.define([
                     printEtiquetas: false,
                     isStarted: false,
                     isArrowVisible: false,
+                    isClosed: true,  
+                    showPasswordInput: false,
                     tableData: tableDataArray,
                     totalP: total,
                     totalScan: totalScan,
                     totalFalta: totalFalta,
+                    totalCubTeo:totalCubTeo,
                     estadoDelTransporte: "",
                     puesto: "Estación de trabajo Nro: " + sPuesto,
                     transporte: "Reparto: " + String(Number(sReparto)),
@@ -94,6 +136,7 @@ sap.ui.define([
             }
           },
           obtenerDatosDeIndexedDB: function () {
+            var ctx = this;
             return new Promise((resolve, reject) => {
               let request = indexedDB.open("ventilado",5);
           
@@ -104,6 +147,7 @@ sap.ui.define([
           
               request.onsuccess = (event) => {
                 let db = event.target.result;
+                ctx._dbConnections.push(db); // Guardar referencia a la conexión abierta
                 let transaction = db.transaction(["ventilado"], "readonly");
                 let objectStore = transaction.objectStore("ventilado");
                 let data = [];
@@ -172,7 +216,8 @@ sap.ui.define([
                 resultado[ruta]["LOCALIDAD"] = registro.LugarDestinatario;
                 resultado[ruta]["C Real"] = registro.Cubre;
                 resultado[ruta]["Pa"] = registro.Pa;
-                resultado[ruta]["Pa"] = registro.CodigoInterno     
+                resultado[ruta]["Cub TEO"] += registro.Cubteo;
+                   
                 // Aquí deberías agregar lógica para calcular SCAN, FALTA, Cub TEO, C Real, Pa
             });
             
@@ -217,6 +262,7 @@ sap.ui.define([
             Ean.setValue('');
             ci.setText('');
         },
+        
 
 /****** Inicio: Arranca proceso de  escaneo  ********************************************/
 
@@ -246,7 +292,7 @@ sap.ui.define([
             this.handleEanEnter(sValue);
         },
         handleEanEnter: async function (sValue) {
-            // Lógica a ejecutar cuando se presiona Enter en el input del EAN
+          // Lógica a ejecutar cuando se presiona Enter en el input del EAN
           // var cantidad = this.getView().byId("txtCantidad");
            ctx=this;
             // Lógica a ejecutar cuando se presiona Enter en el input del EAN
@@ -269,12 +315,14 @@ sap.ui.define([
                         oModel.setProperty("/cantidad", cantidadYRuta.cantidad);               
                         oModel.setProperty("/ean", sValue);
                         oModel.setProperty("/id", cantidadYRuta.id);
+                        oModel.setProperty("/AdicChar2", cantidadYRuta.AdicChar2);
                          // Actualiza la pantalla
                         cantidad.setText(cantidadYRuta.cantidad);
                         sRuta.setText(cantidadYRuta.ruta);
                         descripcion.setText(cantidadYRuta.descripcion);
                         Ean.setValue(cantidadYRuta.ean);
                         ci.setText(cantidadYRuta.ci);
+
                     }
                     else {
                         cantidadYRuta = await this.obtenerCantidadYRuta(sValue,2); // no es unproducto verifica si es un CI
@@ -306,8 +354,7 @@ sap.ui.define([
                               
                             }
                             else if (cantidadYRuta.cantidad==-1){
-                                console.log(" Error no se conoce el valor ingresado");  
-                                                              
+                               console.log(" Error no se conoce el valor ingresado"); 
                                MessageBox.error("ERROR. No se pudo determinar el valor ingresado", {
                                 title: "Error ",
                                 styleClass: "customMessageBox", // Aplica la clase CSS personalizada
@@ -336,14 +383,19 @@ sap.ui.define([
                         oModel.setProperty("/cantidad", 0);                               
                         oModel.setProperty("/ean", "");
                         oModel.setProperty("/ci", "");
-                        oModel.setProperty("/descripcion", "");
+                        oModel.setProperty("/descripcion", "");                        
                         //actualiza el estado 
-                        var request = indexedDB.open("ventilado", 5);  
-                        var id=  oModel.getProperty("/id");                         
+                     var request = indexedDB.open("ventilado", 5);  
+                          
+                        var id=  oModel.getProperty("/id");  
+
                         request.onsuccess = function(event) {
                             var db = event.target.result;
+                            ctx._dbConnections.push(db); // Guardar referencia a la conexión abierta
                             // Llamar a la función para actualizar el campo 'Estado'
-                            ctx.actualizarEstado(db, id, "Completo",scant);
+                            // Incrementar y asignar el nuevo valor de AdicChar2
+                            maxAdicChar2 = maxAdicChar2+1; 
+                            ctx.actualizarEstado(db, id, "Completo",scant,String(maxAdicChar2), ctx.getFormattedDateTime());
                         };
                         oModel.setProperty("/id", 0);                               
                         cantidad.setText("");
@@ -444,7 +496,7 @@ sap.ui.define([
         });
     },
 
-        actualizarEstado: function (db, id, nuevoEstado, cant) {
+        actualizarEstado: function (db, id, nuevoEstado, cant ,AdicChar2,fechaHora) {
             ctx=this;
             var transaction = db.transaction(["ventilado"], "readwrite");
             var objectStore = transaction.objectStore("ventilado");
@@ -456,7 +508,11 @@ sap.ui.define([
                 if (data) {
                     // Actualizar el campo 'Estado'
                     data.Estado = nuevoEstado;   
-                    data.CantEscaneada = cant;    
+                    data.CantEscaneada = cant; 
+                    data.AdicChar2 =  AdicChar2;  
+                    data.AdicDec2 =  fechaHora;
+                    data.Preparador =  sUsuario;
+                    data.AdicDec1 =  sPuesto;
                     // Guardar el registro actualizado
                     var updateRequest = objectStore.put(data);        
                     updateRequest.onsuccess = function(event) { // si se guardo satisfactoriamente vengo x aca
@@ -466,7 +522,8 @@ sap.ui.define([
                         verifyRequest.onsuccess = function(event) {
                             var updatedData = event.target.result;
                             console.log("Valor actualizado del campo 'Estado':", updatedData.Estado);
-                            ctx.oActualizarBackEnd(id, nuevoEstado, cant );
+                   
+                            ctx.oActualizarBackEnd(id, nuevoEstado, cant, AdicChar2,fechaHora ,sUsuario,sPuesto);
                         };
                         verifyRequest.onerror = function(event) { // si hay un error al guardar el dato , voy x aca
                             console.log("Error al verificar el campo 'Estado':", event.target.error);
@@ -483,8 +540,8 @@ sap.ui.define([
         
            
         },
-        oActualizarBackEnd:function(id, estado, cantidad ){
-            var updatedData =[{ "Id": id, "Estado": estado, "CantEscaneada": cantidad }] ;
+        oActualizarBackEnd:function(id, estado, cantidad ,AdicChar2,fechaHora,sUsuario,sPuesto){
+            var updatedData =[{ "Id": id, "Estado": estado, "CantEscaneada": cantidad ,"AdicChar2": AdicChar2,"AdicDec2": fechaHora,"Preparador": sUsuario,"AdicDec1": sPuesto}] ;
             this.crud("ACTUALIZAR", "ventilado",id, updatedData, "");
 
         },
@@ -494,7 +551,7 @@ sap.ui.define([
            
             try {
                 var datos = await this.onGetData(eanInput , busqueda ); // Realiza una sola lectura de la tabla
-                return { cantidad: datos.Cantidad, ruta: datos.Ruta, descripcion: datos.descripcion , id: datos.id, ean: datos.ean, ci: datos.ci}; // Devuelve un objeto con la cantidad y la ruta
+                return { cantidad: datos.Cantidad, ruta: datos.Ruta, descripcion: datos.descripcion , id: datos.id, ean: datos.ean, ci: datos.ci, AdicChar2: datos.AdicChar2}; // Devuelve un objeto con la cantidad y la ruta
             } catch (error) {
                // console.error("Error al obtener la cantidad y la ruta:", error);
                 return { cantidad: -3, ruta: -1 , descripcion:""}; // o cualquier otro valor predeterminado si lo prefieres
@@ -516,32 +573,20 @@ onCierrePress:function(){
             });
             //Se envian los datos para las etiquetas
 
-      /*      var oData = {
-                "Dni": 1,
-                "Nombre": "value2",
-                "Apellido":"erere",
-            };*/
-            ctx=this.getView(); //guardo el contexto
-        /*    oModel.create("/zpruebaSet", oData, {
-                success: function(oData, response) {*/
-                    // Después de que se cree la entidad con éxito, genera la URL para el PDF*/
-                    var sServiceURL = oModel.sServiceUrl;
-                    var sSource = sServiceURL + "/sFormSet(Fname='"+sessionStorage.getItem("reparto")+"')/$value";
-                    // Crear y abrir el PDFViewer
-                    var opdfViewer = new sap.m.PDFViewer();
-                    ctx.addDependent(opdfViewer);
-                    opdfViewer.setSource(sSource);
-                    opdfViewer.setTitle("Etiquetas del Reparto");
-                    opdfViewer.open();  
-             /*   }.bind(this),
-                error: function(oError) {
-                    sap.m.MessageToast.show("Error al enviar datos al backend");
-                }
-           });*/
+            ctx=this.getView(); //guardo el contexto        
+                   
+            var sServiceURL = oModel.sServiceUrl;
+            var sSource = sServiceURL + "/sFormSet(Fname='"+ sReparto +"')/$value";
+            // Crear y abrir el PDFViewer
+            var opdfViewer = new sap.m.PDFViewer();
+            ctx.addDependent(opdfViewer);
+            opdfViewer.setSource(sSource);
+            opdfViewer.setTitle("Etiquetas del Reparto");
+            opdfViewer.open();  
+
 
         },
         onGeneratePDF_back: function () {
-
 
             var oModel = new sap.ui.model.odata.v2.ODataModel("/sap/opu/odata/sap/ZVENTILADO_SRV/", {
                 useBatch: false  // Deshabilitar batch requests, actualizo de a un registro.
@@ -574,8 +619,61 @@ onCierrePress:function(){
             });
 
         },
-//********* */ fin  descarga de etiquetas   ********/
 
+  
+        
+//********* */ fin  descarga de etiquetas   ********/
+      onOpenTransport: function () {
+            var oViewModel = this.getView().getModel();
+            oViewModel.setProperty("/showPasswordInput", true);
+        },
+        onPasswordSubmit: function () {
+            var oViewModel = this.getView().getModel();
+            var sPassword = this.getView().byId("password").getValue();
+            if (sPassword === "12345") {  // Reemplazar con la lógica real de validación
+                /////
+                var aData =oViewModel.setProperty("/tableData2");
+                console.log("Updated Data: ", oViewModel.getProperty("/tableData"));
+                var request = indexedDB.open("ventilado", 5);  
+               // var id=  oViewModel.getProperty("/id");                         
+                request.onsuccess = function(event) {
+                    var db = event.target.result;
+                    ctx._dbConnections.push(db); // Guardar referencia a la conexión abierta
+                    // Iterar sobre cada elemento de tableData y actualizar en IndexedDB
+                    aData.forEach(function(item) {
+                        /*var indice = item.Ruta; // Usar el campo 'Ruta' como índice
+                        var nuevoCubR = Number(item["C Real"]); // Campo 'C Cub'
+                        var nuevoValorPa = Number(item["Pa"]); // Campo 'Pa'*/
+                       
+                        // Llamar a la función para actualizar  estado del transporte
+                        ctx.actualizarCantCubReales(db, indice, nuevoCubR, nuevoValorPa, "");
+                        ctx.byId("dialogoStop").close(); 
+                        var oModel = ctx.getView().getModel();
+                        oViewModel.setProperty("/estadoDelTransporte", "");
+                        oViewModel.setProperty("/isClosed", true);
+                        oViewModel.setProperty("/showPasswordInput", false);
+                        oViewModel.setProperty("/printEtiquetas", true);
+                    });
+                    
+                };  
+
+
+                /////
+               
+                oViewModel.setProperty("/isClosed", false);
+                oViewModel.setProperty("/showPasswordInput", false);
+                MessageToast.show("Transporte abierto con éxito.");
+            } else {
+                
+                MessageBox.error("Error :Contraseña incorrecta. Por favor, inténtelo de nuevo.", {
+                    title: "Error ",
+                    styleClass: "customMessageBox", // Aplica la clase CSS personalizada
+                    onClose: function () {
+                        console.log("Mensaje de error personalizado cerrado.");
+                    }
+                });            
+            }
+        },
 
         // Método para abrir el diálogo del código interno
         onOpenCodeInputDialog: function() {
@@ -630,7 +728,7 @@ onCierrePress:function(){
             
         },
 
-        onPessParcialDialog:function(){
+         onPessParcialDialog:function(){
              //Cargamos el Dialogo
              var oView = this.getView();            
              if (!this.byId("parcial")) {
@@ -651,7 +749,7 @@ onCierrePress:function(){
 
         },
       
-        // Método para manejar la confirmación del valor ingresado en el diálogo del código interno
+       // Método para manejar la confirmación del valor ingresado en el diálogo del código interno
         onParcialConfirm: function() {
             var parcial = this.byId("parcial");
             var inputValue = parcial.getValue();
@@ -707,13 +805,13 @@ onCierrePress:function(){
             var bValid = true;
             aItems.forEach(function(oItem, index) {
                 var oCells = oItem.getCells();
-                // Verificar que al menos uno de los valores sea mayor a cero
-                if (oCells[5].getValue() <= 0 && oCells[6].getValue() <= 0) {
+                // Verificar que al menos uno de los valores sea mayor a cero ( cubetas reales o pallets)
+                if (oCells[7].getValue() <= 0 && oCells[8].getValue() <= 0) {
                     bValid = false;
                 }
 
-                aData[index]["C Real"] = oCells[5].getValue();
-                aData[index]["Pa"] = oCells[6].getValue();
+                aData[index]["C Real"] = oCells[7].getValue();
+                aData[index]["Pa"] = oCells[8].getValue();
             });
             if (bValid){
                 oModel.setProperty("/tableData", aData);
@@ -722,6 +820,7 @@ onCierrePress:function(){
                 var id=  oModel.getProperty("/id");                         
                 request.onsuccess = function(event) {
                     var db = event.target.result;
+                    ctx._dbConnections.push(db); // Guardar referencia a la conexión abierta
                     // Iterar sobre cada elemento de tableData y actualizar en IndexedDB
                     aData.forEach(function(item) {
                         var indice = item.Ruta; // Usar el campo 'Ruta' como índice
@@ -733,12 +832,12 @@ onCierrePress:function(){
                         ctx.byId("dialogoStop").close(); 
                         var oModel = ctx.getView().getModel();
                         oModel.setProperty("/estadoDelTransporte", "CERRADO");
+                        oModel.setProperty("/isClosed", true);
+                        oModel.setProperty("/showPasswordInput", false);
                         oModel.setProperty("/printEtiquetas", true);
                     });
                     
-                };
-              
-                
+                };  
 
             }
             else {
@@ -868,8 +967,8 @@ onCierrePress:function(){
 
             }
             else if (operacion == 'FI'){
-                var sTransporte = "0000001060";
-                var sPtoPlanificacion = "1700";
+                var sTransporte = sReparto;//"0000001060";
+                var sPtoPlanificacion = sPtoPlanif;//"1700";
                 oModel.callFunction("/GenerarTransporte", {
                     method: "GET",
                     urlParameters: {
@@ -1048,6 +1147,7 @@ onGetData: function (key,busqueda) { // busqueda =1 busca si es un producto
 
         request.onsuccess = function(event) {
             var db = event.target.result;
+            ctx._dbConnections.push(db); // Guardar referencia a la conexión abierta
             var transaction = db.transaction(["ventilado"], "readonly");
             var objectStore = transaction.objectStore("ventilado");
             if (busqueda == 1){
@@ -1081,14 +1181,16 @@ onGetData: function (key,busqueda) { // busqueda =1 busca si es un producto
                         var cantidad = data.CantidadEntrega;//aca va la cantidad
                         var ean = data.Ean;
                         var ci = data.CodigoInterno;
+                        var AdicChar2=data.AdicChar2;
                         var ruta = data.LugarPDisp;// esta es la ruta
                             result = {
-                            Cantidad: cantidad, 
-                            Ruta: ruta,
-                            descripcion:descripcion,
-                            id : id,
-                            ean: ean,
-                            ci:  ci
+                            Cantidad    : cantidad, 
+                            Ruta        : ruta,
+                            descripcion : descripcion,
+                            id          : id,
+                            ean         : ean,
+                            ci          : ci,
+                            AdicChar2   : AdicChar2
                         };
                         flag=2;
                        
@@ -1228,6 +1330,7 @@ manejarCRUD: function (operacion, datos, campoBusqueda = "id") {
   
       request.onupgradeneeded = function(event) {
         const db = event.target.result;
+        ctx._dbConnections.push(db); // Guardar referencia a la conexión abierta
         if (!db.objectStoreNames.contains("ventilado")) {
           const objectStore = db.createObjectStore("ventilado", { keyPath: "id" });
           objectStore.createIndex("nombre", "nombre", { unique: false });
@@ -1358,7 +1461,35 @@ manejarCRUD: function (operacion, datos, campoBusqueda = "id") {
   leerElemento("id", 1);
   actualizarElemento("nombre", "Elemento1", { nombre: "Elemento1Modificado" });
   eliminarElemento("nombre", "Elemento1Modificado");*/
-  
+
+
+  /******   Cuando se sale de la pagina se cierran todas las conexiones a la base local */
+    onExit: function () {
+        this.closeAllDbConnections(); // Cerrar todas las conexiones cuando se cierre el controlador
+    },
+
+    closeAllDbConnections: function () {
+        this._dbConnections.forEach(db => {
+            db.close();
+        });
+        this._dbConnections = []; // Resetear el array de conexiones
+    },
+    _handleUnload: function () {
+        this.closeAllDbConnections();
+    },
+    getFormattedDateTime: function () {
+        var oDate = new Date();
+
+        var day = String(oDate.getDate()).padStart(2, '0');
+        var month = String(oDate.getMonth() + 1).padStart(2, '0'); // Enero es 0
+        var year = String(oDate.getFullYear());
+
+        var hours = String(oDate.getHours()).padStart(2, '0');
+        var minutes = String(oDate.getMinutes()).padStart(2, '0');
+        var seconds = String(oDate.getSeconds()).padStart(2, '0');
+
+        return day + "/" + month + "/" + year + " " + hours + ":" + minutes + ":" + seconds;
+    },
   
 
 });

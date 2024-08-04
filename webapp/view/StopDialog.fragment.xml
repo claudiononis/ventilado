@@ -14,6 +14,12 @@
                         <Text text="Ruta" />
                     </Column>
                     <Column>
+                        <Text text="Cliente" />
+                    </Column>
+                    <Column>
+                        <Text text="Razon Social" />
+                    </Column>
+                    <Column>
                         <Text text="TOT"/>
                     </Column>
                     <Column>
@@ -37,6 +43,8 @@
                     <ColumnListItem>
                         <cells>
                             <Text text="{Ruta}" />
+                            <Text text="{CLIENTE}" />
+                            <Text text="{RAZONSOCIAL}" />
                             <Text text="{TOT}" />
                             <Text text="{SCAN}" />
                             <Text text="{FALTA}" />

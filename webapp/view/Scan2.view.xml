@@ -13,10 +13,11 @@
                             <HBox class="header noScroll ">
                                 <Button text="START" type="Reject" press="onStartPress" enabled="{=!${/isStarted}}" />
                                 <Button id="stop" text="STOP" type="Reject" press="onStopDialog" visible="{/isStarted}" icon="sap-icon://flag" />
+                             <!--   <Button id="open" text="Abrir Transporte" type="Emphasized" press="onOpenTransport" visible="{/isClosed}" />
+                                <Input id="password" placeholder="Ingrese contraseña" type="Password" visible="{/showPasswordInput}" submit="onPasswordSubmit" /> -->                              
                                 <Text text="{/puesto}" class="blackBackground" />
                                 <Text text="{/transporte}" class="blackBackground" />
-                                <Button text="Print Etiquetas" press="onGeneratePDF" icon="sap-icon://print" enabled="{=${/printEtiquetas}}"/>
-                              
+                                <Button text="Print Etiquetas" press="onGeneratePDF" icon="sap-icon://print" enabled="{=${/printEtiquetas}}"/>                              
                             </HBox>
                             
                             <HBox class="inputSection">
@@ -81,13 +82,12 @@
                             <Column><header>
                                 <VBox class="customColumnHeader">                                   
                                     <Text text="Cub TEO" class="sameHeight" />
-                                    <Text text="" class="sameHeight" />
+                                    <Text text="{=${/totalCubTeo}}" class="sameHeight" />
                                 </VBox>
                             </header></Column>
                         </columns>
                         
-                        <items >
-                           
+                        <items >                           
                                 <ColumnListItem >
                                 <cells>
                                     <Text  text="{Ruta}" class="boldAndLargeText" />

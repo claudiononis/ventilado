@@ -11,152 +11,156 @@ sap.ui.define([
 ], function (Controller, MessageToast, JSONModel,ODataModel,Filter,FilterOperator,MessageBox) {
     "use strict";
     var ctx= this;  // Variable eglobal en el controlador para guardar el contexto
-    var sTransporte;
     var sPuesto ;
-    var sReparto ;
-    var sPtoPlanif ;
     var sUsuario;
-    var sFecha; 
+    var sReparto;
+    var sPtoPlanif; 
+
+   
     return Controller.extend("ventilado.ventilado.controller.Log", {
-         
-        onInit: function () {
-            sPuesto = sessionStorage.getItem("puesto") || "";
-            sReparto = sessionStorage.getItem("reparto") || "";
-            sPtoPlanif = sessionStorage.getItem("pto_planif") || "";
-            sUsuario = sessionStorage.getItem("usuario") || "";
-            sFecha = sessionStorage.getItem("fecha") || new Date().toISOString().slice(0, 10);
-     
-          /*  this._checkNetworkStatus();  // funcion para que el navegador controle la conexion a internet
-            this._fetchCodConfirmacionData(); // Llamar a la función para leer los Codigos de confirmacion de ruta del backend                  
-     
-            var oModel = new sap.ui.model.json.JSONModel();
+
+        onInit: async function () {
+            this._dbConnections = []; // Array para almacenar conexiones abiertas
+            // Obtener el router y attachRouteMatched
+            var oRouter = sap.ui.core.UIComponent.getRouterFor(this);
+            oRouter.getRoute("Log").attachMatched(this.onRouteMatched, this);
+
+            // Manejar eventos de navegación
+            window.addEventListener('beforeunload', this._handleUnload.bind(this));
+            window.addEventListener('popstate', this._handleUnload.bind(this));
+
+            // Ejecutar acciones iniciales
+            await this.ejecutarAcciones();
+        },
+
+        onRouteMatched: function () {
+            // Ejecutar acciones cada vez que la ruta es navegada
+            this.ejecutarAcciones();
+        },
+
+        ejecutarAcciones: async function () {
+
+            // Lerr datos locales
+            sPuesto=localStorage.getItem('sPuesto');
+            sReparto = localStorage.getItem('sReparto');
+            sPtoPlanif = localStorage.getItem('sPtoPlanif');
+            sUsuario = localStorage.getItem('sPreparador');
+
+            await this.obtenerYProcesarDatos();
+            // Ordenar datosD por IdScan
+            this.datosD.sort(function(a, b) {
+                if (a.IdScan < b.IdScan) {
+                    return -1;
+                }
+                if (a.IdScan > b.IdScan) {
+                    return 1;
+                }
+                return 0;
+            });
+
+            // Calcular el total de cantidadAsig
+            const totalCantidadAsig = this.datosD.reduce((total, item) => {
+                return total + (item.cantidadAsig || 0);
+            }, 0);
+
+            // Crear un nuevo modelo JSON con los datos procesados y el total
+            var oModel = new JSONModel({
+                tableData: this.datosD,
+                totalCantidadAsig: totalCantidadAsig,
+                Transporte:this.datosD[0].Transporte
+            });
+
+            // Asignar el modelo a la vista
             this.getView().setModel(oModel);
-            this.obtenerYProcesarDatos();*/
-            var datos = [
-                { 
-                    Id: 1,
-                    CodInterno: "Cod001",
-                    Descripcion: "Producto A",
-                    CantidadEscaneada: 10,
-                    Ruta: "01",
-                    Transporte: 1060,
-                    Entrega: 800601
-                },
-                { 
-                    Id: 2,
-                    CodInterno: "Cod001",
-                    Descripcion: "Producto A",
-                    CantidadEscaneada: 15,
-                    Ruta: "02",
-                    Transporte: 1060,
-                    Entrega: 800602
-                },
-                { 
-                    Id: 3,
-                    CodInterno: "Cod001",
-                    Descripcion: "Producto A",
-                    CantidadEscaneada: 8,
-                    Ruta: "03",
-                    Transporte: 1060,
-                    Entrega: 800603
-                },
-                { 
-                    Id: 4,
-                    CodInterno: "Cod002",
-                    Descripcion: "Producto B",
-                    CantidadEscaneada: 12,
-                    Ruta: "01",
-                    Transporte: 1060,
-                    Entrega: 800601
-                },
-                { 
-                    Id: 5,
-                    CodInterno: "Cod002",
-                    Descripcion: "Producto B",
-                    CantidadEscaneada: 18,
-                    Ruta: "02",
-                    Transporte: 1060,
-                    Entrega: 800602
-                },
-                { 
-                    Id: 6,
-                    CodInterno: "Cod002",
-                    Descripcion: "Producto B",
-                    CantidadEscaneada: 7,
-                    Ruta: "03",
-                    Transporte: 1060,
-                    Entrega: 800603
-                },
-                // Puedes seguir agregando más objetos según sea necesario
-            ];
-            
-            // Objeto para almacenar los datos agrupados por código interno y descripción
-            var datosAgrupados = {};
-            // Objeto para almacenar los totales por ruta
-            var totalesPorRuta = {};
-            // Iterar sobre los datos y agrupar por código interno y descripción
-            datos.forEach(function(item) {
-                var codInterno = item.CodInterno;
-                var descripcion = item.Descripcion;
-                var ruta = item.Ruta;
-                var cantidadEscaneada = item.CantidadEscaneada;
-                var entrega = item.Entrega;
-                var transporte = item.Transporte;
-                // Si el código interno no existe en el objeto de datos agrupados, crear un nuevo objeto para él
-                if (!datosAgrupados[codInterno]) {
-                    datosAgrupados[codInterno] = {
-                        CodInterno: codInterno,
-                        Descripcion: descripcion,
-                        Transporte: transporte,
-                        Entrega: entrega
+            },
+
+                    
+        obtenerYProcesarDatos: async function () {
+            try {
+                let datos = await this.obtenerDatosDeIndexedDB();
+                this.datosD = this.procesarDatos(datos);
+            } catch (error) {
+                console.log("Error:", error);
+            }
+          },
+          obtenerDatosDeIndexedDB: function () {
+            ctx=this;
+            return new Promise((resolve, reject) => {
+              let request = indexedDB.open("ventilado",5);
+          
+              request.onerror = (event) => {
+                console.log("Error al abrir la base de datos:", event);
+                reject("Error al abrir la base de datos");
+              };
+          
+              request.onsuccess = (event) => {
+                let db = event.target.result;
+                ctx._dbConnections.push(db); // Guardar referencia a la conexión abierta
+                let transaction = db.transaction(["ventilado"], "readonly");
+                let objectStore = transaction.objectStore("ventilado");
+                let data = [];
+          
+                objectStore.openCursor().onsuccess = (event) => {
+                  let cursor = event.target.result;
+                  if (cursor) {
+                    data.push(cursor.value);
+                    cursor.continue();
+                  } else {
+                    resolve(data);
+                  }
+                };
+              };
+            });
+          },
+
+
+        procesarDatos: function(datos) {
+            let resultado = {};            
+            datos.forEach((registro) => {   
+                if(registro.CantEscaneada>0) {           
+                    resultado[registro.Id] = {
+                        "Id"               : registro.Id,
+                        "IdScan"           : registro.AdicChar2,
+                        "Ean"              : registro.Ean,
+                        "CodigoInterno"    : registro.CodigoInterno,
+                        "Descricion"       : registro.Descricion,
+                        "RutaAsig"         : String(registro.LugarPDisp).padStart(2,'0'),
+                        "RutaConf"         : String(registro.LugarPDisp).padStart(2,'0'),
+                        "Transporte"       : registro.Transporte ,
+                        "Entrega"          : registro.Entrega,  
+                        "EntreProd"        : registro.Entrega + registro.CodigoInterno,  
+                        "Asign"            : registro.Entrega + registro.CodigoInterno +"A",  
+                        "TipoLog"          : "SCAN"  ,
+                        "FechaHora"        : registro.AdicDec2,
+                        "Preparador"       : registro.Preparador,
+                        "Cliente"          : registro.Destinatario,
+                        "cantidadAsig"     : registro.CantEscaneada
+
                     };
                 }
-            
-                // Agregar o actualizar la cantidad escaneada para la ruta correspondiente
-                datosAgrupados[codInterno][ruta] = cantidadEscaneada;
-                 // Agregar o actualizar los totales por ruta
-                if (!totalesPorRuta[ruta]) {
-                    totalesPorRuta[ruta] = { CantidadTotal: 0, Entrega: entrega };
-                }
-                totalesPorRuta[ruta].CantidadTotal += cantidadEscaneada;
+                
             });
             
-            // Convertir el objeto de datos agrupados en un array
-            var arrayDatosAgrupados = [];
+            // Convierte el objeto resultado en un array
+            let arrayResultado = Object.keys(resultado).map((ruta) => resultado[ruta]);
             
-           // Iterar sobre los datos agrupados y convertirlos en un array
-            for (var cod in datosAgrupados) {
-                arrayDatosAgrupados.push(datosAgrupados[cod]);
-            }
-            
-            // Mostrar el resultado final en la consola (solo para demostración)
-            console.log(arrayDatosAgrupados);
-           // Crear un nuevo modelo JSON
-    /*        var oModel = new JSONModel();
-           oModel.setData({ tableData: arrayDatosAgrupados });
-
-           // Asignar el modelo a la vista
-           this.getView().setModel(oModel);*/
-           // Convertir el objeto de totales por ruta en un array
-var arrayTotalesPorRuta = [];
-for (var ruta in totalesPorRuta) {
-    arrayTotalesPorRuta.push({ Ruta: ruta, CantidadTotal: totalesPorRuta[ruta].CantidadTotal, Entrega: totalesPorRuta[ruta].Entrega });
-}
-
-// Crear un nuevo modelo JSON con ambos arrays
-var oModel = new sap.ui.model.json.JSONModel();
-oModel.setData({
-    tableData: arrayDatosAgrupados,
-    totalesPorRuta: arrayTotalesPorRuta
-});
-
-// Asignar el modelo a la vista
-this.getView().setModel(oModel);
-
+            return arrayResultado;
         },
-                     
+        
+        /******   Cuando se sale de la pagina se cierran todas las conexiones a la base local */
+        onExit: function () {
+            this.closeAllDbConnections(); // Cerrar todas las conexiones cuando se cierre el controlador
+        },
 
-
+        closeAllDbConnections: function () {
+            this._dbConnections.forEach(db => {
+                db.close();
+            });
+            this._dbConnections = []; // Resetear el array de conexiones
+        },
+        _handleUnload: function () {
+            this.closeAllDbConnections();
+        }
     });
 
 });

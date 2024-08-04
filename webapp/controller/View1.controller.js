@@ -2,25 +2,26 @@ sap.ui.define([
     "sap/ui/core/UIComponent",
     "sap/ui/core/mvc/Controller",
     "sap/m/MessageToast",
-    "sap/m/PDFViewer",
-    "sap/ui/core/Fragment",
-    "sap/ui/model/json/JSONModel",
+    "sap/m/MessageBox",
+    "sap/ui/core/BusyIndicator",  // Importar BusyIndicator
     "sap/ui/model/odata/v2/ODataModel",
     "sap/ui/model/Filter",
     "sap/ui/model/FilterOperator",
 
-], function (UIComponent,Controller, MessageToast, PDFViewer,Fragment,JSONModel,ODataModel,Filter,FilterOperator) {
+], function (UIComponent,Controller, MessageToast, MessageBox,BusyIndicator,ODataModel,Filter,FilterOperator) {
     "use strict";
     var ctx;
+    var sPreparador;
     var sTransporte;
-    var sPuesto ;
-    var sReparto ;
+  
     var sPtoPlanif ;
-    var sUsuario;
+    var sPuesto;
     var sFecha; 
+ 
     return Controller.extend("ventilado.ventilado.controller.View1", {
        
         onInit: function () {
+            this._dbConnections = []; // Array para almacenar conexiones abiertas
             var oDate = new Date();
             var oFormattedDate = this._formatDate(oDate);
             var oFechaInput = this.byId("fecha"); // Asegúrate de que el ID del campo de entrada sea "fechaInput"
@@ -28,16 +29,16 @@ sap.ui.define([
                 oFechaInput.setValue(oFormattedDate);
             }
 
-             sPuesto = sessionStorage.getItem("puesto") || "";
+           /*  sPuesto = sessionStorage.getItem("puesto") || "";
              sReparto = sessionStorage.getItem("reparto") || "";
              sPtoPlanif = sessionStorage.getItem("pto_planif") || "";
-             sUsuario = sessionStorage.getItem("usuario") || "";
+             sUsuario = sessionStorage.getItem("usuario") || "";*/
              sFecha = sessionStorage.getItem("fecha") || new Date().toISOString().slice(0, 10);
 
-
-        // Obtener el router y añadir la función para el evento routeMatched
-        var oRouter = UIComponent.getRouterFor(this);
-        oRouter.getRoute("RouteView1").attachPatternMatched(this.onRouteMatched, this);
+            
+            // Obtener el router y añadir la función para el evento routeMatched
+            var oRouter = UIComponent.getRouterFor(this);
+            oRouter.getRoute("RouteView1").attachPatternMatched(this.onRouteMatched, this);
         },
         onRouteMatched: function (oEvent) {
             // Código que deseas ejecutar cada vez que la vista se muestra
@@ -54,10 +55,16 @@ sap.ui.define([
                const oRouter = sap.ui.core.UIComponent.getRouterFor(this);
                oRouter.navTo("Scan");                 
         },
-        onCierrePress:function(){
+        onDesconsolidadoPress:function(){
+            this.onExit();
             const oRouter = sap.ui.core.UIComponent.getRouterFor(this);
             oRouter.navTo("Desconsolidado"); 
-        },      
+        },   
+        onCierrePress:function(){
+            this.onExit();
+            const oRouter = sap.ui.core.UIComponent.getRouterFor(this);
+            oRouter.navTo("Cierre"); 
+        },        
 
         /*  Cuando se pulsa "Buscar datos" se ejecuta esta funcion
             Se busca el modelo y se llama a la "Function import" del back end para buscar los datos  del transporte
@@ -66,13 +73,62 @@ sap.ui.define([
         onBuscarPress:function(){
             // Guardar los valores en sessionStorage
             sTransporte = this.getView().byId("reparto").getValue().padStart(10, '0');
-            var sOperador = this.getView().byId("Usuario").getValue();
+            sPtoPlanif = this.getView().byId("pto_planif").getValue().padStart(4, '0');
+            sPuesto = this.getView().byId("puesto").getValue();
+            sPreparador = this.getView().byId("Usuario").getValue();
+
+
+          /*  var sOperador = this.getView().byId("Usuario").getValue();
             var sPuesto = this.getView().byId("puesto").getValue();
             sessionStorage.setItem("puesto", sPuesto);
             sessionStorage.setItem("reparto", sTransporte);
             sessionStorage.setItem("usuario", sOperador);
-            sessionStorage.setItem("fecha", sFecha);
+            sessionStorage.setItem("fecha", sFecha);*/
 
+            // Guardar datos
+            localStorage.setItem('sPuesto', sPuesto);
+            localStorage.setItem('sReparto', sTransporte);
+            localStorage.setItem('sPtoPlanif', sPtoPlanif);
+            localStorage.setItem('sPreparador', sPreparador);
+
+            var aInputs = [
+                this.byId("puesto"),
+                this.byId("reparto"),
+                this.byId("pto_planif"),
+                this.byId("Usuario")
+            ];
+
+            var bValid = true;
+
+            // Validar todos los campos requeridos
+            aInputs.forEach(function (oInput) {
+                if (!oInput.getValue()) {
+                    oInput.setValueState("Error");
+                    bValid = false;
+                } else {
+                    oInput.setValueState("None");
+                }
+            });
+
+            if (bValid) {
+                // Mostrar 
+                this.onExit();
+                BusyIndicator.show(0);
+                // Todos los campos requeridos están llenos, buscar datos
+                this.buscarDatos();
+            } else {
+                MessageBox.error("ERROR. Por favor, complete todos los campos obligatorios.", {
+                    title: "Error ",
+                    styleClass: "customMessageBox", // Aplica la clase CSS personalizada
+                    onClose: function () {
+                        console.log("Mensaje de error personalizado cerrado.");
+                    }
+                });       
+               
+            }
+        },
+
+        buscarDatos:function(){
             var ctx = this; 
             var oModel = new sap.ui.model.odata.v2.ODataModel("/sap/opu/odata/sap/ZVENTILADO_SRV/", {                
                 useBatch: false,
@@ -113,16 +169,9 @@ sap.ui.define([
                     console.log("Entrega: ", entrega);
                     console.log("Estado: ", estado);  
                     // leer datos del Transporte a  ventilar
-                    // y los guarda en la base local
-              //      ctx._initDatabase();
-              ctx._fetchAndStoreOData();
-                   //  habilitar botones de las distintas opciones
-                    ctx.getView().byId("btScan").setEnabled(true);
-                    ctx.getView().byId("btLog").setEnabled(true);
-                    ctx.getView().byId("btAxP").setEnabled(true);
-                    ctx.getView().byId("btAxE").setEnabled(true);
-                    ctx.getView().byId("btCierre").setEnabled(true);
-            
+                    // y los guarda en la base local              
+                    ctx._fetchAndStoreOData();
+                  
                 },
                 error: function (oError) {
                   // Manejar error
@@ -138,6 +187,14 @@ sap.ui.define([
               });
 
 
+        },
+        onLogPress:function(){
+            const oRouter = sap.ui.core.UIComponent.getRouterFor(this);
+            oRouter.navTo("Log");  
+        },
+        onAvancePPress:function(){
+            const oRouter = sap.ui.core.UIComponent.getRouterFor(this);
+            oRouter.navTo("Avance");  
         },
 
 //
@@ -238,6 +295,7 @@ sap.ui.define([
         
                 openRequest.onerror = function (event) {
                     console.error("Error al abrir la base de datos:", event.target.errorCode);
+                    
                 };
         
                 openRequest.onupgradeneeded = function (event) {
@@ -265,6 +323,7 @@ sap.ui.define([
         
                 openRequest.onsuccess = function (event) {
                     ctx.db = event.target.result;
+                    ctx._dbConnections.push(ctx.db); // Guardar referencia a la conexión abierta
                     console.log("Base de datos abierta con éxito.");
         
                     var oModel = new ODataModel("/sap/opu/odata/sap/ZVENTILADO_SRV/");
@@ -295,14 +354,35 @@ sap.ui.define([
                                 // Guardar el item en el object store
                                 objectStore.put(item);
                             }
+                            BusyIndicator.hide();  // Ocultar 
                             console.log("Datos copiados con éxito.");
+                            ctx.getView().byId("btScan").setEnabled(true);
+                            ctx.getView().byId("btLog").setEnabled(true);
+                            ctx.getView().byId("btAvance").setEnabled(true);
+                            ctx.getView().byId("btCierre").setEnabled(true);
+                            ctx.getView().byId("btDesconsolidado").setEnabled(true);
                         },
                         error: function (oError) {
                             console.error("Error al leer datos del servicio OData:", oError);
+                            BusyIndicator.hide();  // Ocultar BusyIndicator en caso de error
                         }
                     });
                 };
             };
+        },
+        /******   Cuando se sale de la pagina se cierran todas las conexiones a la base local */
+        onExit: function () {
+            this.closeAllDbConnections(); // Cerrar todas las conexiones cuando se cierre el controlador
+        },
+
+        closeAllDbConnections: function () {
+            this._dbConnections.forEach(db => {
+                db.close();
+            });
+            this._dbConnections = []; // Resetear el array de conexiones
+        },
+        _handleUnload: function () {
+            this.closeAllDbConnections();
         }
    
     });

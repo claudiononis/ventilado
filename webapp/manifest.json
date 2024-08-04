@@ -107,8 +107,23 @@
         },
         {
           "name": "Desconsolidado",
-          "pattern": "Desc",
-          "target": "Desc"
+          "pattern": "Desconsolidado",
+          "target": "Desconsolidado"
+        },
+        {
+          "name": "Log",
+          "pattern": "Log",
+          "target": "Log"
+        },
+        {
+          "name": "Avance",
+          "pattern": "Avance",
+          "target": "Avance"
+        },
+        {
+          "name": "Cierre",
+          "pattern": "Cierre",
+          "target": "Cierre"
         }
       ],
       "targets": {
@@ -125,11 +140,29 @@
           "clearControlAggregation": false,
           "viewName": "Scan2"
         },
-        "Desc": {
+        "Desconsolidado": {
           "viewType": "XML",
           "transition": "slide",
           "clearControlAggregation": false,
           "viewName": "Desconsolidado"
+        },
+        "Log": {
+          "viewType": "XML",
+          "transition": "slide",
+          "clearControlAggregation": false,
+          "viewName": "Log"
+        },
+        "Avance": {
+          "viewType": "XML",
+          "transition": "slide",
+          "clearControlAggregation": false,
+          "viewName": "Avance"
+        },
+        "Cierre": {
+          "viewType": "XML",
+          "transition": "slide",
+          "clearControlAggregation": false,
+          "viewName": "Cierre"
         }
       }
     },
