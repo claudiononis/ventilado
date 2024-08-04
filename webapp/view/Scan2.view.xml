@@ -4,102 +4,128 @@
     xmlns:m="sap.m">
     
     <Page title="Scaneamos todos los productos y los colocamos en la cubeta que corresponda.">
-        <VBox class="fullHeight">
-            <HBox class="contentArea">
-                <!-- FlexBox ocupa 75% del ancho -->
-                <VBox width="75%">
-                    <FlexBox>
-                        <VBox class="fullHeight" justifyContent="Start">
-                            <HBox class="header noScroll ">
-                                <Button text="START" type="Reject" press="onStartPress" enabled="{=!${/isStarted}}" />
-                                <Button id="stop" text="STOP" type="Reject" press="onStopDialog" visible="{/isStarted}" icon="sap-icon://flag" />
-                             <!--   <Button id="open" text="Abrir Transporte" type="Emphasized" press="onOpenTransport" visible="{/isClosed}" />
-                                <Input id="password" placeholder="Ingrese contraseña" type="Password" visible="{/showPasswordInput}" submit="onPasswordSubmit" /> -->                              
-                                <Text text="{/puesto}" class="blackBackground" />
-                                <Text text="{/transporte}" class="blackBackground" />
-                                <Button text="Print Etiquetas" press="onGeneratePDF" icon="sap-icon://print" enabled="{=${/printEtiquetas}}"/>                              
-                            </HBox>
-                            
-                            <HBox class="inputSection">
-                                <Label id="lEan" text="EAN / Cod.Int" class="label" />
-                                <Input id="eanInput" enabled="{/isStarted}" class="inputEan" submit="onEanInputSubmit" />
-                                <Button icon="sap-icon://delete" press="onClearEanInput" class="clearButton" />
-                                <Button id="btCi2" enabled="false" text="COD. INTERNO" type="Reject" press="onOpenCodeInputDialog" class="button" />
-                                <Label id="edtCI" text="" class="inputCodigoIntern" width="100px" />
-                                <Label id="lDescripcion" text="" class="inputDescripcion" />
-                            </HBox>
-                            
-                            <HBox class="spSection">
-                                <VBox class="spBox">
-                                    <HBox class="spSection">
-                                        <Label id="lbCantidad" text="CANTIDAD" visible="{/isArrowVisible}" class="inputDescripcion" />
-                                    </HBox>
-                                    <Text id="txtCantidad" text="" class="spTextBlue" />
-                                </VBox>
-                                <VBox class="arrowSection" visible="{/isArrowVisible}">
-                                    <Text text="&#x2192;" class="arrowText" />
-                                </VBox>
-                                <VBox class="spBox">
-                                    <Label id="lbRuta" text="RUTA" visible="{/isArrowVisible}" class="inputDescripcion" />
-                                    <Text id="txtRuta" text="" class="spTextBlack" />
-                                </VBox>
-                            </HBox>
+        <VBox class="mainContainer">
+            <HBox class="headerSection">
+                <VBox class="leftPane">
+                    <HBox class="stateContainer" justifyContent="SpaceBetween">
+                        <VBox>
+                            <Text text="State:" class="label" />
+                            <Text text="{/scanState}" class="{= ${/scanState} === 'Running' ? 'running' : ${/scanState} === 'Paused' ? 'paused' : 'stopped' }" />
                         </VBox>
-                    </FlexBox>
+                        <VBox>
+                            <Text text="Tiempo:" class="label" />
+                            <Text text="{/formattedElapsedTime}" class="timer" />
+                        </VBox>
+                    </HBox>
+                    <HBox class="header">
+                        <Button text="START" type="Reject" press="onStartPress" enabled="{=!${/isStarted}}" />
+                        <Button text="Pause" press="onPause" visible="{/isStarted}" />
+                        <Button id="stop" text="STOP" type="Reject" press="onStopDialog" visible="{/isStarted}" icon="sap-icon://flag" />
+                        <Button id="parcialButton" text="Parcial"  press="onParcialPress" enabled="false"/>
+                        <Text text="{/puesto}" class="blackBackground" />
+                        <Text text="{/transporte}" class="blackBackground" />
+                         <!--<Text text="{/elapsedTime}" />-->
+                        <Button text="Print Etiquetas" press="onGeneratePDF" icon="sap-icon://print" enabled="{=${/printEtiquetas}}"/>                              
+                    </HBox>
+                    
+                    <HBox class="inputSection">
+                        <Label id="lEan" text="EAN / Cod.Int" class="label" />
+                        <Input id="eanInput" enabled="{/isStarted}" class="inputEan" submit="onEanInputSubmit" />
+                        <Button icon="sap-icon://delete" press="onClearEanInput" class="clearButton" />
+                        <Button id="btCi2" enabled="false" text="COD. INTERNO" type="Reject" press="onOpenCodeInputDialog" class="button" />
+                        <Label id="edtCI" text="" class="inputCodigoIntern" width="100px" />
+                        <Label id="lDescripcion" text="" class="inputDescripcion" />
+                    </HBox>
+
+
+                    
+                    <HBox class="spSection">
+                        <VBox class="spBox">
+                            <HBox class="spSection">
+                                <Label id="lbCantidad" text="CANTIDAD" visible="{/isArrowVisible}" class="inputDescripcion" />
+                            </HBox>
+                            <Text id="txtCantidad" text="" class="spTextBlue" />
+                        </VBox>
+                        <VBox class="arrowSection" visible="{/isArrowVisible}">
+                            <Text text="&#x2192;" class="arrowText" />
+                        </VBox>
+                        <VBox class="spBox">
+                            <Label id="lbRuta" text="RUTA" visible="{/isArrowVisible}" class="inputDescripcion" />
+                            <Text id="txtRuta" text="" class="spTextBlack" />
+                        </VBox>
+                    </HBox>
                 </VBox>
-    
-                <!-- Table ocupando 1/4 del ancho-->
-                <VBox width="25%">
-                    <ScrollContainer height="100%" vertical="true">
-                    <Table id="customTableAvance" items="{path: '/tableData'}" >
-                        <columns>
-                            <Column> 
-                                <header>
-                                    <VBox class="customColumnHeader">                                        
-                                        <Text text="RUTA" class="sameHeight" />
-                                        <Text text="Totales" class="sameHeight" />
+                
+                <!-- FlexBox para la tabla -->
+                <VBox class="rightPane">
+                    <ScrollContainer class="tableContainer" vertical="true" height="100%">
+                        <Table id="customTableAvance" items="{path: '/tableData'}" width="100%">
+                            <headerToolbar>
+                                <OverflowToolbar>
+                                    <VBox>
+                                        <items>
+                                            <Title text="Ult.Prod. Confirmado: {/ultimoProdScan}" />
+                                            <Label text="{/descUltimoProdScan}" class="text-smaller"/>
+                                        </items>
                                     </VBox>
-                                </header>
-                            </Column>
-                            <Column><header>
-                                <VBox class="customColumnHeader">                                    
-                                    <Text text="TOT" class="sameHeight" />
-                                    <Text text="{=${/totalP}}" class="sameHeight" />
-                                </VBox>
-                            </header></Column>
-                            <Column><header>
-                                <VBox class="customColumnHeader">                                    
-                                    <Text text="SCAN" class="sameHeight" />
-                                    <Text text="{=${/totalScan}}" class="sameHeight" />
-                                </VBox>
-                            </header></Column>
-                            <Column><header>
-                                <VBox class="customColumnHeader">                                    
-                                    <Text text="FALTA" class="sameHeight" />
-                                    <Text text="{=${/totalFalta}}" class="sameHeight" />
-                                </VBox>
-                            </header></Column>
-                            <Column><header>
-                                <VBox class="customColumnHeader">                                   
-                                    <Text text="Cub TEO" class="sameHeight" />
-                                    <Text text="{=${/totalCubTeo}}" class="sameHeight" />
-                                </VBox>
-                            </header></Column>
-                        </columns>
-                        
-                        <items >                           
-                                <ColumnListItem >
-                                <cells>
-                                    <Text  text="{Ruta}" class="boldAndLargeText" />
-                                    <Text text="{TOT}" class="boldAndLargeText" />
-                                    <Text text="{SCAN}"  class="boldAndLargeText"  />
-                                    <Text text="{FALTA}"  class="boldAndLargeText"  />
-                                    <Text text="{Cub TEO}" class="boldAndLargeText"  />
-                                </cells>
-                            </ColumnListItem>
-                        </items>
-                    </Table>
-                </ScrollContainer >
+                                </OverflowToolbar>
+                            </headerToolbar>
+                            <columns>
+                                <Column>
+                                    <header>
+                                        <VBox>                                        
+                                            <Text text="RUTA" />
+                                            <Text text="Totales" />
+                                        </VBox>
+                                    </header>
+                                </Column>
+                                <Column>
+                                    <header>
+                                        <VBox>                                    
+                                            <Text text="TOT" />
+                                            <Text text="{=${/totalP}}" />
+                                        </VBox>
+                                    </header>
+                                </Column>
+                                <Column>
+                                    <header>
+                                        <VBox>                                    
+                                            <Text text="SCAN" />
+                                            <Text text="{=${/totalScan}}" />
+                                        </VBox>
+                                    </header>
+                                </Column>
+                                <Column>
+                                    <header>
+                                        <VBox>                                    
+                                            <Text text="FALTA" />
+                                            <Text text="{=${/totalFalta}}" />
+                                        </VBox>
+                                    </header>
+                                </Column>
+                                <Column>
+                                    <header>
+                                        <VBox>                                   
+                                            <Text text="Cub TEO" />
+                                            <Text text="{=${/totalCubTeo}}" />
+                                        </VBox>
+                                    </header>
+                                </Column>
+                            </columns>
+                            
+                            <items>
+                                <ColumnListItem>
+                                    <cells>
+                                        <Text text="{Ruta}" class="boldAndLargeText"  />
+                                        <Text text="{TOT}" class="boldAndLargeText" />
+                                        <Text text="{SCAN}" class="boldAndLargeText" />
+                                        <Text text="{FALTA}" class="boldAndLargeText" />
+                                        <Text text="{Cub TEO}" class="boldAndLargeText" />
+                                    </cells>
+                                </ColumnListItem>
+                            </items>
+                        </Table>
+                    </ScrollContainer>
                 </VBox>
             </HBox>
         </VBox>

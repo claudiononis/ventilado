@@ -1,14 +1,14 @@
 sap.ui.define([
     "sap/ui/core/mvc/Controller",
     "sap/m/MessageToast",
-
     "sap/ui/model/json/JSONModel",
     "sap/ui/model/odata/v2/ODataModel",
     "sap/ui/model/Filter",
     "sap/ui/model/FilterOperator",
     "sap/m/MessageBox",
+    "sap/ui/core/BusyIndicator"  // Importar BusyIndicator
 
-], function (Controller, MessageToast, JSONModel,ODataModel,Filter,FilterOperator,MessageBox) {
+], function (Controller, MessageToast, JSONModel,ODataModel,Filter,FilterOperator,MessageBox,BusyIndicator) {
     "use strict";
     var ctx= this;  // Variable eglobal en el controlador para guardar el contexto
     var sTransporte;
@@ -28,21 +28,22 @@ sap.ui.define([
         return cantidadTotal === 0 ? "" : ruta;
     }, 
 
-    onInit: async function () {
+    onInit:  function () {
         this._dbConnections = []; // Array para almacenar conexiones abiertas
         // Obtener el router y attachRouteMatched
         var oRouter = sap.ui.core.UIComponent.getRouterFor(this);
         oRouter.getRoute("Desconsolidado").attachMatched(this.onRouteMatched, this);
-
+        var oModel = new sap.ui.model.json.JSONModel();
+        this.getView().setModel(oModel);
         // Manejar eventos de navegación - para atender cuandose va a salir de lapagina
         window.addEventListener('beforeunload', this._handleUnload.bind(this));
         window.addEventListener('popstate', this._handleUnload.bind(this));
 
         // Ejecutar acciones iniciales
-        await this.ejecutarAcciones();
+         this.ejecutarAcciones();
     },
 
-    onRouteMatched: function () {
+    onRouteMatched: async function () {
         // Ejecutar acciones cada vez que la ruta es navegada
         this.ejecutarAcciones();
     },
@@ -50,13 +51,15 @@ sap.ui.define([
 
 
 
-    ejecutarAcciones: async function () {
+    ejecutarAcciones:  async function () {
             // Lerr datos locales
             sPuesto=localStorage.getItem('sPuesto');
             sReparto = localStorage.getItem('sReparto');
             sPtoPlanif = localStorage.getItem('sPtoPlanif');
             sUsuario = localStorage.getItem('sPreparador');
-            await this.obtenerYProcesarDatos(); 
+            var oModel = new sap.ui.model.json.JSONModel();
+            this.getView().setModel(oModel);
+           await this.obtenerYProcesarDatos(); 
 
             // Objeto para almacenar los datos agrupados por código interno y descripción
             var datosAgrupados = {};
@@ -227,7 +230,64 @@ sap.ui.define([
         },
         _handleUnload: function () {
             this.closeAllDbConnections();
-        }
+        },
+
+        onVerDesafectacionPress:function(){
+            this.onExit();
+            const oRouter = sap.ui.core.UIComponent.getRouterFor(this);
+            oRouter.navTo("Verdesafectacion"); 
+        },   
+        onDesafectacionPress: function () {
+            ctx=this;
+            MessageBox.warning("Se van a desafectar los materiales indicados para cada ENTREGA, confirma?", {
+              actions: [MessageBox.Action.OK, MessageBox.Action.CANCEL],
+              onClose: function (oAction) {
+                if (oAction === MessageBox.Action.OK) {
+                  // Codigo para la desafectacion
+                  var oModel =  ctx.getView().getModel();
+                  var oModel = new sap.ui.model.odata.v2.ODataModel("/sap/opu/odata/sap/ZVENTILADO_SRV/", {                
+                    useBatch: false,
+                    defaultBindingMode: "TwoWay",
+                    deferredGroups: ["batchGroup1"]
+                });
+                oModel.refreshMetadata();
+                BusyIndicator.show();
+                oModel.callFunction("/GenerarTransporte", {  // se llama a la function import
+                    method: "GET",
+                    urlParameters: {
+                      transporte: "BI_"+sReparto, // pasa los parametros strings
+                      pto_planificacion: '0000'//sPtoPlanificacion
+                    },
+                    success: function (oData) {
+                      // Manejar éxito
+                     // MessageToast.show("Se cargaron los datos para el ventilado");
+                      // Procesar la respuesta aquí
+                    
+                        var estado = oData.Ean;  
+                        // Aquí se puede  trabajar con los datos recibidos
+                        console.log("Estado: ", estado);
+                        BusyIndicator.hide();  // Ocultar 
+                        MessageToast.show( "Se conpleto la Desafectacion de material");
+                    },
+                    error: function (oError) {
+                      // Manejar error
+                        var sErrorMessage = "";
+                        try {
+                            var oErrorResponse = JSON.parse(oError.responseText);
+                            sErrorMessage = oErrorResponse.error.message.value;
+                        } catch (e) {
+                            sErrorMessage = "Error desconocido,  revise conexion de Internet y VPN";
+                        }
+                        BusyIndicator.hide();  // Ocultar 
+                        MessageToast.show( sErrorMessage);
+                    },
+                    timeout: 10000 // Establecer un tiempo de espera de 10 segundos
+                  });
+
+                }
+              }
+            });
+          }
     });
 
 });

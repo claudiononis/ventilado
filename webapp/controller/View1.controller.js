@@ -20,40 +20,62 @@ sap.ui.define([
  
     return Controller.extend("ventilado.ventilado.controller.View1", {
        
-        onInit: function () {
+        onInit:  function () {
             this._dbConnections = []; // Array para almacenar conexiones abiertas
             var oDate = new Date();
             var oFormattedDate = this._formatDate(oDate);
             var oFechaInput = this.byId("fecha"); // Asegúrate de que el ID del campo de entrada sea "fechaInput"
+
             if (oFechaInput) {
                 oFechaInput.setValue(oFormattedDate);
             }
 
-           /*  sPuesto = sessionStorage.getItem("puesto") || "";
-             sReparto = sessionStorage.getItem("reparto") || "";
-             sPtoPlanif = sessionStorage.getItem("pto_planif") || "";
-             sUsuario = sessionStorage.getItem("usuario") || "";*/
              sFecha = sessionStorage.getItem("fecha") || new Date().toISOString().slice(0, 10);
-
             
             // Obtener el router y añadir la función para el evento routeMatched
             var oRouter = UIComponent.getRouterFor(this);
             oRouter.getRoute("RouteView1").attachPatternMatched(this.onRouteMatched, this);
         },
+
+
         onRouteMatched: function (oEvent) {
-            // Código que deseas ejecutar cada vez que la vista se muestra
-            console.log("aca");
+            this._dbConnections = []; // Array para almacenar conexiones abiertas
+            var aInputs = [
+                this.byId("puesto"),
+                this.byId("reparto"),
+                this.byId("pto_planif"),
+                this.byId("Usuario")
+            ];
+
+            var bValid = true;
+
+            // Validar todos los campos requeridos
+            aInputs.forEach(function (oInput) {
+                if (!oInput.getValue()) {
+                   // oInput.setValueState("Error");
+                    bValid = false;
+                } else {
+                    oInput.setValueState("None");
+                }
+            });
+            if (localStorage.getItem('Actualizar')== 'true' && bValid ){
+                localStorage.setItem('Actualizar',false) 
+                this.onBuscarPress();
+            }
+
         },
+
         _formatDate: function (date) {
             var day = String(date.getDate()).padStart(2, '0');
             var month = String(date.getMonth() + 1).padStart(2, '0'); // Enero es 0
-            var year = date.getFullYear();
+            var year = date.getFullYear();            
             return day + '/' + month + '/' + year;
         },
          
         onScanPress: function () {      
-               const oRouter = sap.ui.core.UIComponent.getRouterFor(this);
-               oRouter.navTo("Scan");                 
+            this.onExit();
+            const oRouter = sap.ui.core.UIComponent.getRouterFor(this);
+            oRouter.navTo("Scan");                 
         },
         onDesconsolidadoPress:function(){
             this.onExit();
@@ -64,13 +86,24 @@ sap.ui.define([
             this.onExit();
             const oRouter = sap.ui.core.UIComponent.getRouterFor(this);
             oRouter.navTo("Cierre"); 
-        },        
+        },    
+        onLogPress:function(){
+            this.onExit();
+            const oRouter = sap.ui.core.UIComponent.getRouterFor(this);
+            oRouter.navTo("Log");  
+        },
+        onAvancePPress:function(){
+            this.onExit();
+            const oRouter = sap.ui.core.UIComponent.getRouterFor(this);
+            oRouter.navTo("Avance");  
+        },    
 
         /*  Cuando se pulsa "Buscar datos" se ejecuta esta funcion
             Se busca el modelo y se llama a la "Function import" del back end para buscar los datos  del transporte
             a ventilar.           
         */
         onBuscarPress:function(){
+            this.closeAllDbConnections();
             // Guardar los valores en sessionStorage
             sTransporte = this.getView().byId("reparto").getValue().padStart(10, '0');
             sPtoPlanif = this.getView().byId("pto_planif").getValue().padStart(4, '0');
@@ -78,18 +111,12 @@ sap.ui.define([
             sPreparador = this.getView().byId("Usuario").getValue();
 
 
-          /*  var sOperador = this.getView().byId("Usuario").getValue();
-            var sPuesto = this.getView().byId("puesto").getValue();
-            sessionStorage.setItem("puesto", sPuesto);
-            sessionStorage.setItem("reparto", sTransporte);
-            sessionStorage.setItem("usuario", sOperador);
-            sessionStorage.setItem("fecha", sFecha);*/
-
             // Guardar datos
             localStorage.setItem('sPuesto', sPuesto);
             localStorage.setItem('sReparto', sTransporte);
             localStorage.setItem('sPtoPlanif', sPtoPlanif);
             localStorage.setItem('sPreparador', sPreparador);
+            localStorage.setItem('Actualizar', false);
 
             var aInputs = [
                 this.byId("puesto"),
@@ -180,100 +207,19 @@ sap.ui.define([
                         var oErrorResponse = JSON.parse(oError.responseText);
                         sErrorMessage = oErrorResponse.error.message.value;
                     } catch (e) {
-                        sErrorMessage = "Error desconocido";
+                        sErrorMessage = "Error desconocido,  revise conexion de Internet y VPN";
                     }
+                    BusyIndicator.hide();  // Ocultar 
                     MessageToast.show( sErrorMessage);
-                                }
+                },
+                timeout: 10000 // Establecer un tiempo de espera de 10 segundos
               });
 
 
         },
-        onLogPress:function(){
-            const oRouter = sap.ui.core.UIComponent.getRouterFor(this);
-            oRouter.navTo("Log");  
-        },
-        onAvancePPress:function(){
-            const oRouter = sap.ui.core.UIComponent.getRouterFor(this);
-            oRouter.navTo("Avance");  
-        },
 
-//
-/////////   Funciones para base offline
-  /*      _initDatabase: function () {
-        
-            //Se crea la base local con todos sus campos para el transporte que se ventilara
-            //Ver de hacer un function impor y traer labase, luego volcarla aca
-            var request = indexedDB.open("ventilado", 4);
 
-            request.onerror = function (event) {
-                console.error("Error al abrir la base de datos:", event.target.errorCode);
-            };
 
-            request.onupgradeneeded = function (event) {
-                var db = event.target.result;
-            // Si el objectStore ya existe, entonces solo actualizar los índices que faltan
-            if (!db.objectStoreNames.contains("ventilado")) {
-                var objectStore = db.createObjectStore("ventilado", { keyPath: "Id" });
-            } else {
-                var objectStore = event.target.transaction.objectStore("ventilado");
-            }
-
-            if (!objectStore.indexNames.contains("Ean")) {
-                objectStore.createIndex("Ean", "Ean", { unique: false });
-            }
-            if (!objectStore.indexNames.contains("Fecha")) {
-                objectStore.createIndex("Fecha", "Fecha", { unique: false });
-            }
-            if (!objectStore.indexNames.contains("Transporte")) {
-                objectStore.createIndex("Transporte", "Transporte", { unique: false });
-            }
-            if (!objectStore.indexNames.contains("Entrega")) {
-                objectStore.createIndex("Entrega", "Entrega", { unique: false });
-            }
-            if (!objectStore.indexNames.contains("NombreDestinatario")) {
-                objectStore.createIndex("NombreDestinatario", "NombreDestinatario", { unique: false });
-            }
-            if (!objectStore.indexNames.contains("Nonbre_destinatario")) {
-                objectStore.createIndex("Nonbre_destinatario", "Nonbre_destinatario", { unique: false });
-            }
-            if (!objectStore.indexNames.contains("Calle")) {
-                objectStore.createIndex("Calle", "Calle", { unique: false });
-            }
-            if (!objectStore.indexNames.contains("Lugar_destinatario")) {
-                objectStore.createIndex("Lugar_destinatario", "Lugar_destinatario", { unique: false });
-            }
-            if (!objectStore.indexNames.contains("Codigo_interno")) {
-                objectStore.createIndex("CodigoInterno", "CodigoInterno", { unique: false });
-            }
-            if (!objectStore.indexNames.contains("Descricion")) {
-                objectStore.createIndex("Descricion", "Descricion", { unique: false });
-            }
-            if (!objectStore.indexNames.contains("Cantidad_entrega")) {
-                objectStore.createIndex("Cantidad_entrega", "Cantidad_entrega", { unique: false });
-            }
-            if (!objectStore.indexNames.contains("LugarPDisp")) {
-                objectStore.createIndex("LugarPDisp", "LugarPDisp", { unique: false });
-            }
-            if (!objectStore.indexNames.contains("Cant_escaneada")) {
-                objectStore.createIndex("Cant_escaneada", "Cant_escaneada", { unique: false });
-            }
-            if (!objectStore.indexNames.contains("Preparador")) {
-                objectStore.createIndex("Preparador", "Preparador", { unique: false });
-            }
-            if (!objectStore.indexNames.contains("Estado")) {
-                objectStore.createIndex("Estado", "Estado", { unique: false });
-            }
-
-            console.log("Almacén de objetos e índices creados con éxito.");
-            
-            };
-
-            request.onsuccess = function (event) {
-                this.db = event.target.result;
-                console.log("Base de datos abierta con éxito.");
-                this._fetchAndStoreOData(); //Luego de abrir la base se leen y guardan los datos
-            }.bind(this);
-        },*/
 
         _fetchAndStoreOData: function () {
             var ctx = this;
@@ -285,6 +231,7 @@ sap.ui.define([
         
             request.onblocked = function(event) {
                 console.warn("La base de datos no se pudo borrar porque otra conexión aún está abierta.");
+                BusyIndicator.hide();  // Ocultar 
             };
         
             request.onsuccess = function (event) {
@@ -295,6 +242,7 @@ sap.ui.define([
         
                 openRequest.onerror = function (event) {
                     console.error("Error al abrir la base de datos:", event.target.errorCode);
+                    BusyIndicator.hide();  // Ocultar 
                     
                 };
         
@@ -318,6 +266,7 @@ sap.ui.define([
                     objectStore.createIndex("Cubre", "Cubre", { unique: false });
                     objectStore.createIndex("Pa", "Pa", { unique: false });
                     objectStore.createIndex("AdicChar1", "AdicChar1", { unique: false });
+                    
                     
                 };
         

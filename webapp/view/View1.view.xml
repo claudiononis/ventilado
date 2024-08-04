@@ -2,10 +2,10 @@
     xmlns:mvc="sap.ui.core.mvc" displayBlock="true"
     xmlns="sap.m">
     
-    <Page title="Inicio de Sesión" class="sapUiContentPadding">
+    <Page title="Inicio de Sesion" class="sapUiContentPadding">
         <content>
             <VBox class="sapUiSmallMargin" justifyContent="Center" alignItems="Center">
-                <Panel headerText="Información de Usuario" class="sapUiResponsiveMargin">
+                <Panel headerText="Informacion de Usuario" class="sapUiResponsiveMargin">
                     <VBox>
                         <HBox class="compactMargin inputSection">
                             <Label text="Puesto:" class="inputLabel"/>
@@ -16,7 +16,7 @@
                             <Input id="reparto" class="inputField" required="true"/>
                         </HBox>
                         <HBox class="compactMargin inputSection">
-                            <Label text="Pto de Planificación:" class="inputLabel"/>
+                            <Label text="Pto de Planificacion:" class="inputLabel"/>
                             <Input id="pto_planif" class="inputField" required="true"/>
                         </HBox>
                         <HBox class="compactMargin inputSection">

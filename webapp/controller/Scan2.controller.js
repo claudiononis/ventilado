@@ -8,8 +8,12 @@ sap.ui.define([
     "sap/ui/model/Filter",
     "sap/ui/model/FilterOperator",
     "sap/m/MessageBox",
+    "sap/m/Dialog", 
+    "sap/m/Label",
+    "sap/m/Input",
+    "sap/m/Button",
 
-], function (Controller, MessageToast, PDFViewer,Fragment,JSONModel,ODataModel,Filter,FilterOperator,MessageBox) {
+], function (Controller, MessageToast, PDFViewer,Fragment,JSONModel,ODataModel,Filter,FilterOperator,MessageBox, Dialog,Label,Input,Button) {
     "use strict";
     var ctx= this;  // Variable global en el controlador para guardar el contexto
     var sTransporte;
@@ -17,47 +21,113 @@ sap.ui.define([
     var sReparto ;
     var sPtoPlanif ;
     var sUsuario;
-    var sFecha; 
+    var datosD=[];
+ //   var sFecha; 
     var maxAdicChar2 = 0;
     return Controller.extend("ventilado.ventilado.controller.Scan2", {
          
-        onInit: async function () {
+        onInit:  function () {
+
+            
             this._dbConnections = []; // Array para almacenar conexiones abiertas
              // Obtener el router y attachRouteMatched
              var oRouter = sap.ui.core.UIComponent.getRouterFor(this);
-             oRouter.getRoute("Log").attachMatched(this.onRouteMatched, this);
- 
+             oRouter.getRoute("Scan").attachMatched(this.onRouteMatched, this);
+             
+             var oModel = new sap.ui.model.json.JSONModel();
+             this.getView().setModel(oModel);
              // Manejar eventos de navegación
              window.addEventListener('beforeunload', this._handleUnload.bind(this));
              window.addEventListener('popstate', this._handleUnload.bind(this));
              // Ejecutar acciones iniciales
-            await this.ejecutarAcciones();
+             this.ejecutarAcciones();
              // Obtener el valor máximo de AdicChar2
-             maxAdicChar2 =   await this.obtenerMaxAdicChar2();
+            
              
         },
 
         onRouteMatched: function () {
+            this._dbConnections = []; // Array para almacenar conexiones abiertas
+            //inicializa datos
+            var oModel = this.getView().getModel();
+            var cantidad = this.getView().byId("txtCantidad");
+            var sRuta = this.getView().byId("txtRuta");
+            var descripcion = this.getView().byId("lDescripcion");
+            var Ean = this.getView().byId("eanInput");
+            var ci = this.getView().byId("edtCI");           
+            
+            oModel.setProperty("/ruta", 0);
+            oModel.setProperty("/cantidad", 0);   
+            oModel.setProperty("/cantidadAEscanear", 0);               
+            oModel.setProperty("/ean", '');
+            oModel.setProperty("/id", 0);
+            oModel.setProperty("/isArrowVisible", false);
+            oModel.setProperty("/ultimoProdScan", ci.getText());
+            oModel.setProperty("/descUltimoProdScan",descripcion.getText());
+
+            cantidad.setText('');
+            sRuta.setText('');
+            descripcion.setText('');
+            Ean.setValue('');
+            ci.setText('');
             // Ejecutar acciones cada vez que la ruta es navegada
             this.ejecutarAcciones();
         },
 
-        ejecutarAcciones: async function () {            
+        ejecutarAcciones: async function () {   
+            maxAdicChar2 =  await  this.obtenerMaxAdicChar2();         
             // Lerr datos locales
             sPuesto=localStorage.getItem('sPuesto');
             sReparto = localStorage.getItem('sReparto');
             sPtoPlanif = localStorage.getItem('sPtoPlanif');
             sUsuario = localStorage.getItem('sPreparador');
             //completo con ceros            
-            sReparto = sReparto.padStart(10, '0');
+          //  sReparto = sReparto.padStart(10, '0');
             sPtoPlanif = sPtoPlanif.padStart(4, '0');
      
             this._checkNetworkStatus();  // funcion para que el navegador controle la conexion a internet
-            this._fetchCodConfirmacionData(); // Llamar a la función para leer los Codigos de confirmacion de ruta del backend                  
+           //await this._fetchCodConfirmacionData(); // Llamar a la función para leer los Codigos de confirmacion de ruta del backend                  
      
-            var oModel = new sap.ui.model.json.JSONModel();
-            this.getView().setModel(oModel);
-            this.obtenerYProcesarDatos();
+          //  var oModel = new sap.ui.model.json.JSONModel();
+          //  this.getView().setModel(oModel);
+
+          this.elapsedTime = 0;
+          this.intervalId = null;
+          this.startTime = null;
+
+          var oModel = new sap.ui.model.json.JSONModel({
+              elapsedTime: 0,
+              formattedElapsedTime: "00:00:00",
+              scanState: "Stopped",
+              stateClass: "stopped" ,// Add initial state class
+              tableData : []
+              
+          });
+
+          /*  oModel.setProperty("/ruta", 0);
+            oModel.setProperty("/cantidad", 0);               
+            oModel.setProperty("/ean", '');
+            oModel.setProperty("/id", 0);
+            oModel.setProperty("/isArrowVisible", false);
+            oModel.setProperty("/ultimoProdScan", ci.getText());
+            oModel.setProperty("/descUltimoProdScan",descripcion.getText());*/
+            var codConfirmacionData = await this._fetchCodConfirmacionData(); // Llamar a la función para leer los Codigos de confirmacion de ruta del backend             
+            oModel.setProperty("/codConfirmacionData", codConfirmacionData);
+          this.getView().setModel(oModel);
+
+          // Load saved state
+          var savedState = localStorage.getItem("scanState");
+          var savedTime = localStorage.getItem("elapsedTime");
+          if (savedState && savedTime) {
+              oModel.setProperty("/scanState", savedState);
+              oModel.setProperty("/stateClass", this._getStateClass(savedState)); // Update class based on saved state
+              this.elapsedTime = parseInt(savedTime, 10);
+              this._updateFormattedTime();
+          }
+
+          // Set interval to update the timer display every second
+          this._intervalId = setInterval(this._updateFormattedTime.bind(this), 1000);
+           await this.obtenerYProcesarDatos();
             
         },
 
@@ -74,6 +144,7 @@ obtenerMaxAdicChar2: async function () {
     return maxAdicChar2;
 },
         obtenerYProcesarDatos: async function () {
+
             try {
                 let datos = await this.obtenerDatosDeIndexedDB();
                 let resultado = this.procesarDatos(datos);
@@ -103,10 +174,12 @@ obtenerMaxAdicChar2: async function () {
                     });
                     return nuevoRegistro;
                 });
+                await this._fetchCodConfirmacionData(); // Llamar a la función para leer los Codigos de confirmacion de ruta del backend                  
         
                 // Actualizar el modelo con tableDataArray
              //   var oGlobalModel = this.getOwnerComponent().getModel("globalModel");
                 var oModel = this.getView().getModel(); // Obtener el modelo de la vista
+                var codConfirmacionData = oModel.getProperty("/codConfirmacionData");
                 oModel.setData({
                     printEtiquetas: false,
                     isStarted: false,
@@ -119,14 +192,23 @@ obtenerMaxAdicChar2: async function () {
                     totalFalta: totalFalta,
                     totalCubTeo:totalCubTeo,
                     estadoDelTransporte: "",
-                    puesto: "Estación de trabajo Nro: " + sPuesto,
+                    puesto: "Estacion de trabajo Nro: " + sPuesto,
                     transporte: "Reparto: " + String(Number(sReparto)),
                     cuenta: 0,
                     cantidad: 0,
-                    ruta: 0,
+                    cantidadAEscanear: 0,
+                    ruta: 0, 
                     ean: "",
                     eanRuta: "",
-                    id: 0
+                    id: 0,
+                    ultimoProdScan:0,
+                    descUltimoProdScan:'',
+                    codConfirmacionData: codConfirmacionData,
+                    Kgbrv: '',
+                    M3v : '',
+                    cubTeorica: 0
+
+                    
                 });
                 this.getView().setModel(oModel);
         
@@ -194,8 +276,7 @@ obtenerMaxAdicChar2: async function () {
                         "LOCALIDAD"   :  registro.LugarDestinatario,
                         "CODIGOINTERNO"   :  registro.CodigoInterno,
 
-                      //  fecha: registro.fecha,  //Suponiendo que la fecha es la misma para todos los registros de la misma ruta
-                      //  transportista: registro.transportista  // Suponiendo que el transportista es el mismo para todos los registros de la misma ruta
+                      
                     };
                 }
 
@@ -216,7 +297,7 @@ obtenerMaxAdicChar2: async function () {
                 resultado[ruta]["LOCALIDAD"] = registro.LugarDestinatario;
                 resultado[ruta]["C Real"] = registro.Cubre;
                 resultado[ruta]["Pa"] = registro.Pa;
-                resultado[ruta]["Cub TEO"] += registro.Cubteo;
+                resultado[ruta]["Cub TEO"] += Math.ceil(registro.M3v / 0.077);//0,077  volumen de la cubeta
                    
                 // Aquí deberías agregar lógica para calcular SCAN, FALTA, Cub TEO, C Real, Pa
             });
@@ -248,41 +329,148 @@ obtenerMaxAdicChar2: async function () {
             var sRuta = this.getView().byId("txtRuta");
             var descripcion = this.getView().byId("lDescripcion");
             var Ean = this.getView().byId("eanInput");
-            var ci = this.getView().byId("edtCI");
+            var ci = this.getView().byId("edtCI");           
+            
             oModel.setProperty("/ruta", 0);
-            oModel.setProperty("/cantidad", 0);               
+            oModel.setProperty("/cantidad", 0);  
+            oModel.setProperty("/cantidadAEscanear", 0);  
+                         
             oModel.setProperty("/ean", '');
             oModel.setProperty("/id", 0);
             oModel.setProperty("/isArrowVisible", false);
-            
-            // Actualiza la pantalla
+             oModel.setProperty("/ultimoProdScan", ci.getText());
+            oModel.setProperty("/descUltimoProdScan",descripcion.getText());
+            // Actualiza la pantalla           
+           
             cantidad.setText('');
             sRuta.setText('');
             descripcion.setText('');
             Ean.setValue('');
             ci.setText('');
         },
-        
-
-/****** Inicio: Arranca proceso de  escaneo  ********************************************/
-
-        onStartPress:function (){
-
-            var oModel = this.getView().getModel();
-            oModel.setProperty("/isStarted", true);
-            var Input = this.getView().byId("eanInput");              
-            setTimeout(function() {
-                Input.focus();
-            }, 0);
-            ctx=this.getView();
-            document.body.addEventListener('click', function(event) {
-            // Manejar el evento clic del cuerpo de la página
-            var eanInput = ctx.byId("eanInput"); 
-            eanInput.focus();
-            
+        onParcialPress: function () {
+           var  ctx2=this;
+            var oDialog = new Dialog({
+                title: "Cantidad a Asignar",
+                content: [
+                    new Label({ text: "Ingrese la cantidad a asignar a la ruta" }),
+                    new Input({
+                        id: "quantityInput",
+                        type: "Number",
+                        placeholder: "Cantidad"
+                    })
+                ],
+                beginButton: new Button({
+                    text: "OK",
+                    press: function () {
+                        var sValue = sap.ui.getCore().byId("quantityInput").getValue();
+                        if (!isNaN(sValue) && sValue.trim() !== "") {
+                            sap.ui.getCore().byId("txtCantidad").setText(sValue);
+                            oDialog.close();
+                            var Input = ctx2.getView().byId("eanInput");
+                            setTimeout(function() {
+                                Input.focus();
+                            }, 0);
+                        } else {
+                            MessageBox.error("Ingrese un valor numérico válido.");
+                        }
+                    }
+                }),
+                endButton: new Button({
+                    text: "Cancelar",
+                    press: function () {
+                        oDialog.close();
+                        var Input = ctx2.getView().byId("eanInput");
+                        setTimeout(function() {
+                            Input.focus();
+                        }, 0);
+                    }
+                }),
+                afterClose: function () {
+                    oDialog.destroy();
+                    var Input = ctx2.getView().byId("eanInput");
+                    setTimeout(function() {
+                        Input.focus();
+                    }, 0);
+                }
             });
 
-        },
+            oDialog.open();
+        },       
+
+/****** Inicio: Arranca proceso de  escaneo  ********************************************/
+onStartPress: function () {
+
+    /* inicia reloj*/
+    if (this.intervalId) {
+        clearInterval(this.intervalId);
+    }
+
+    this.startTime = Date.now();
+    var oModel = this.getView().getModel();
+    oModel.setProperty("/scanState", "Running");
+    oModel.setProperty("/stateClass", this._getStateClass("Running"));
+
+    this.intervalId = setInterval(this._updateFormattedTime.bind(this), 1000);
+   
+    var oModel = this.getView().getModel();
+    oModel.setProperty("/isStarted", true);
+    var Input = this.getView().byId("eanInput");              
+    setTimeout(function() {
+        Input.focus();
+    }, 0);
+
+    // Attach the body click event
+    document.body.addEventListener('click', this._onBodyClick.bind(this));
+},
+
+_onBodyClick: function (ctx, event) {
+    var eanInput = this.getView().byId("eanInput");         
+    eanInput.focus();
+},
+
+onParcialPress: function () {
+    ctx=this;
+    var oDialog = new Dialog({
+        title: "Cantidad a Asignar",
+        content: [
+            new Label({ text: "Ingrese la cantidad a asignar a la ruta" }),
+            new Input({
+                id: "quantityInput",
+                type: "Number",
+                placeholder: "Cantidad"
+            })
+        ],
+        beginButton: new Button({
+            text: "OK",
+            press: function () {
+                var sValue = sap.ui.getCore().byId("quantityInput").getValue();
+                if (!isNaN(sValue) && sValue.trim() !== "") {
+                    ctx.getView().byId("txtCantidad").setText(sValue);
+                    ctx.getView().byId("parcialButton").setEnabled(false);
+                    var oModel = ctx.getView().getModel();
+                    oModel.setProperty("/cantidad",Number(sValue) )// actualiza el modelo con el nuevo valor
+                    oDialog.close();
+                } else {
+                    MessageBox.error("Ingrese un valor numérico válido.");
+                }
+            }
+        }),
+        endButton: new Button({
+            text: "Cancelar",
+            press: function () {
+                oDialog.close();
+            }
+        }),
+        afterClose: function () {
+            oDialog.destroy();
+        }
+    });
+
+    oDialog.open();
+},
+
+
 /**    Se dispara con el ENTER luego del EAN */
         onEanInputSubmit: function (oEvent) {
             // Detectar cuando se presiona Enter en el input del EAN
@@ -302,6 +490,7 @@ obtenerMaxAdicChar2: async function () {
            var Ean = this.getView().byId("eanInput");
            var ci = this.getView().byId("edtCI");
            var oModel = this.getView().getModel();
+           var parcialButton = this.getView().byId("parcialButton");
            var cantidadYRuta;
            if (oModel.getProperty("/ruta")==0){
                 // Entra un codigo y el modelo esta vacio
@@ -312,16 +501,23 @@ obtenerMaxAdicChar2: async function () {
                         console.log("es un producto");
                         // Actualiza el modelo
                         oModel.setProperty("/ruta", cantidadYRuta.ruta);
-                        oModel.setProperty("/cantidad", cantidadYRuta.cantidad);               
+                        oModel.setProperty("/cantidad", cantidadYRuta.cantidad);
+                        oModel.setProperty("/cantidadAEscanear", cantidadYRuta.cantidad);              
                         oModel.setProperty("/ean", sValue);
                         oModel.setProperty("/id", cantidadYRuta.id);
                         oModel.setProperty("/AdicChar2", cantidadYRuta.AdicChar2);
+                        oModel.setProperty("/Kgbrv", cantidadYRuta.Kgbrv);
+                        oModel.setProperty("/M3v", cantidadYRuta.M3v);
                          // Actualiza la pantalla
                         cantidad.setText(cantidadYRuta.cantidad);
                         sRuta.setText(cantidadYRuta.ruta);
                         descripcion.setText(cantidadYRuta.descripcion);
                         Ean.setValue(cantidadYRuta.ean);
                         ci.setText(cantidadYRuta.ci);
+                        oModel.setProperty("/Kgbrv", cantidadYRuta.Kgbrv);
+                        oModel.setProperty("/M3v", cantidadYRuta.M3v);
+                        this.getView().setModel(oModel);
+
 
                     }
                     else {
@@ -330,19 +526,26 @@ obtenerMaxAdicChar2: async function () {
                             // Actualiza el modelo
                             console.log("es un ci");
                             oModel.setProperty("/ruta", cantidadYRuta.ruta);
-                            oModel.setProperty("/cantidad", cantidadYRuta.cantidad);               
+                            oModel.setProperty("/cantidad", cantidadYRuta.cantidad);    
+                            oModel.setProperty("/cantidadAEscanear", cantidadYRuta.cantidad);              
                             oModel.setProperty("/ean", cantidadYRuta.ean);
                             oModel.setProperty("/id", cantidadYRuta.id);
                             oModel.setProperty("/ci", cantidadYRuta.ci);
+                            oModel.setProperty("/Kgbrv", cantidadYRuta.Kgbrv);
+                            oModel.setProperty("/M3v", cantidadYRuta.M3v);
                             // Actualiza la pantalla
                             cantidad.setText(cantidadYRuta.cantidad);
                             sRuta.setText(cantidadYRuta.ruta);
                             descripcion.setText(cantidadYRuta.descripcion);
                             Ean.setValue(cantidadYRuta.ean);
                             ci.setText(cantidadYRuta.ci);
+                            parcialButton.setEnabled(true);
+                            this.getView().setModel(oModel);
                         }
                         else{ // no es ni producto ni CI, comprobar si es un codigo de confirmacion                           
                             if(cantidadYRuta.cantidad==-2){
+                                var Ean = this.getView().byId("eanInput");
+                                Ean.setValue('');
                                 console.log(" Error: Producto sobrante");
                                 MessageBox.error("ERROR. este producto no puede asignarse a ninguna ruta. Producto sobrante", {
                                     title: "Error ",
@@ -355,6 +558,8 @@ obtenerMaxAdicChar2: async function () {
                             }
                             else if (cantidadYRuta.cantidad==-1){
                                console.log(" Error no se conoce el valor ingresado"); 
+                               var Ean = this.getView().byId("eanInput");
+                               Ean.setValue('');
                                MessageBox.error("ERROR. No se pudo determinar el valor ingresado", {
                                 title: "Error ",
                                 styleClass: "customMessageBox", // Aplica la clase CSS personalizada
@@ -380,10 +585,17 @@ obtenerMaxAdicChar2: async function () {
                     var scant= oModel.getProperty("/cantidad");
                     if (ruta ==oModel.getProperty("/ruta"))  {                   
                         oModel.setProperty("/ruta", 0);                         
-                        oModel.setProperty("/cantidad", 0);                               
+                                                  
                         oModel.setProperty("/ean", "");
+                        oModel.setProperty("/ultimoProdScan", oModel.getProperty("/ci"));
+                        oModel.setProperty("/descUltimoProdScan", descripcion.getText());
                         oModel.setProperty("/ci", "");
-                        oModel.setProperty("/descripcion", "");                        
+                        oModel.setProperty("/descripcion", "");   
+                        var m3v = parseFloat(oModel.getProperty("/M3v")) || 0;
+                        var Kgbrv = parseFloat(oModel.getProperty("/Kgbrv")) || 0;
+                        
+                        var cantidadAEscanear = parseInt(oModel.getProperty("/cantidadAEscanear")) || 1; // Asegúrate de no dividir por cero
+                        
                         //actualiza el estado 
                      var request = indexedDB.open("ventilado", 5);  
                           
@@ -395,14 +607,42 @@ obtenerMaxAdicChar2: async function () {
                             // Llamar a la función para actualizar el campo 'Estado'
                             // Incrementar y asignar el nuevo valor de AdicChar2
                             maxAdicChar2 = maxAdicChar2+1; 
-                            ctx.actualizarEstado(db, id, "Completo",scant,String(maxAdicChar2), ctx.getFormattedDateTime());
+                            //var m3v = parseFloat(oModel.getProperty("/M3v")) || 0;
+                            //var Kgbrv = parseFloat(oModel.getProperty("/Kgbrv")) || 0;
+                            //var cantidad = parseInt(oModel.getProperty("/cantidad"), 10) || 0;
+                            //var cantidadAEscanear = parseInt(oModel.getProperty("/cantidadAEscanear")) || 1; // Asegúrate de no dividir por cero
+                            
+                            // Realizar la operación matemática
+                            var resultadoM3r = (m3v * scant) / cantidadAEscanear;
+                            
+                            // Redondear a 1 decimal
+                           // resultadoM3r = Math.round(resultadoM3r * 10) / 100;
+                            
+                            // Formatear el resultado para que tenga longitud 5
+                            var resultadoFormateadoM3r = resultadoM3r.toFixed(3).padStart(5, ' ');
+
+                            // Realizar la operación matemática
+                            var resultadoKgbrr = (Kgbrv * scant) / cantidadAEscanear;
+                            
+                            // Redondear a 1 decimal
+                           // resultadoKgbrr = Math.round(resultadoKgbrr * 10) / 100;
+                            
+                            // Formatear el resultado para que tenga longitud 5
+                            var resultadoFormateadoKgbrr = resultadoKgbrr.toFixed(1).padStart(5, ' ');
+
+                            
+                            ctx.actualizarEstado(db, id, "Completo",scant,String(maxAdicChar2), ctx.getFormattedDateTime(), resultadoFormateadoKgbrr, resultadoFormateadoM3r);
                         };
-                        oModel.setProperty("/id", 0);                               
+                        oModel.setProperty("/id", 0); 
+                        oModel.setProperty("/cantidad", 0);   
+                        oModel.setProperty("/cantidadAEscanear", 0);                             
                         cantidad.setText("");
                         sRuta.setText("");
                         descripcion.setText("");
                         Ean.setValue("");
                         ci.setText(""); 
+                        oModel.setProperty("/Kgbrv", '');
+                        oModel.setProperty("/M3v", '');
                         // Actualizar tableData
                        var tableData = oModel.getProperty("/tableData");
                        // Buscar el registro correspondiente en tableData
@@ -422,10 +662,13 @@ obtenerMaxAdicChar2: async function () {
                        oModel.setProperty("/tableData", tableData);
                        oModel.setProperty("/totalScan", totalScan);
                        oModel.setProperty("/totalFalta", totalFalta);
+                       this.getView().setModel(oModel);
                     }
                     
                     else{
                         //MessageBox.warning("Error : Esta confirmando en una ruta equivocada, tiene que hacelo en la ruta"+ oModel.getProperty("/ruta"));
+                        var Ean = this.getView().byId("eanInput");
+                        Ean.setValue('');
                         MessageBox.error("Error : Esta confirmando en una ruta equivocada, tiene que hacelo en la ruta "+ oModel.getProperty("/ruta"), {
                             title: "Error ",
                             styleClass: "customMessageBox", // Aplica la clase CSS personalizada
@@ -436,6 +679,8 @@ obtenerMaxAdicChar2: async function () {
                     } 
                 }
                 else{  
+                    var Ean = this.getView().byId("eanInput");
+                    Ean.setValue('');
                     MessageBox.error("Error : Tiene que ingresar un codigo de confirmacion de ruta", {
                         title: "Error ",
                         styleClass: "customMessageBox", // Aplica la clase CSS personalizada
@@ -449,11 +694,12 @@ obtenerMaxAdicChar2: async function () {
             oModel.setProperty("/isArrowVisible", true);
             var descripcion = this.getView().byId("lDescripcion");
             MessageToast.show("Valor ingresado: " + sValue);
+            this.getView().setModel(oModel);
  
         },  
-              
+     
     
-       /***    /** Encuentra la ruta a partir del EAN  */
+       /***     Encuentra la ruta a partir del EAN  */
        _findRouteByEAN: function(ean) {
         var oLocalModel = this.getView().getModel();
         var aCodConfirmacionData = oLocalModel.getProperty("/codConfirmacionData");
@@ -472,7 +718,38 @@ obtenerMaxAdicChar2: async function () {
     },
 
     /** Lee del backend los codigos EAN de las rutas y los pasa a un array local */
-    _fetchCodConfirmacionData: function() {
+    _fetchCodConfirmacionData: async function() {
+        var oModel = new sap.ui.model.odata.v2.ODataModel("/sap/opu/odata/sap/ZVENTILADO_SRV/");
+        
+        try {
+            const oData = await new Promise((resolve, reject) => {
+                oModel.read("/CodConfirmacionSet", {
+                    success: function (oData) {
+                        resolve(oData);
+                    },
+                    error: function (oError) {
+                        reject(oError);
+                    }
+                });
+            });
+    
+            var oLocalModel = this.getView().getModel();
+    
+            // Verificar si oData.results es un array
+            var codConfirmacionData = Array.isArray(oData.results) ? oData.results : [oData.results];
+    
+            // Guardar los datos en el modelo local
+            oLocalModel.setProperty("/codConfirmacionData", codConfirmacionData);
+    
+            console.log("Datos copiados con éxito.");
+    
+            return codConfirmacionData;
+        } catch (oError) {
+            console.error("Error al leer datos del servicio OData:", oError);
+            return [];
+        }
+    },
+    _fetchCodConfirmacionData2: function() {
         var oModel = new sap.ui.model.odata.v2.ODataModel("/sap/opu/odata/sap/ZVENTILADO_SRV/");
         
         oModel.read("/CodConfirmacionSet", {
@@ -496,7 +773,7 @@ obtenerMaxAdicChar2: async function () {
         });
     },
 
-        actualizarEstado: function (db, id, nuevoEstado, cant ,AdicChar2,fechaHora) {
+        actualizarEstado: function (db, id, nuevoEstado, cant ,AdicChar2,fechaHora, kgbrr, M3r) {
             ctx=this;
             var transaction = db.transaction(["ventilado"], "readwrite");
             var objectStore = transaction.objectStore("ventilado");
@@ -513,6 +790,8 @@ obtenerMaxAdicChar2: async function () {
                     data.AdicDec2 =  fechaHora;
                     data.Preparador =  sUsuario;
                     data.AdicDec1 =  sPuesto;
+                    data.Kgbrr = kgbrr;
+                    data.M3r  = M3r;
                     // Guardar el registro actualizado
                     var updateRequest = objectStore.put(data);        
                     updateRequest.onsuccess = function(event) { // si se guardo satisfactoriamente vengo x aca
@@ -523,7 +802,7 @@ obtenerMaxAdicChar2: async function () {
                             var updatedData = event.target.result;
                             console.log("Valor actualizado del campo 'Estado':", updatedData.Estado);
                    
-                            ctx.oActualizarBackEnd(id, nuevoEstado, cant, AdicChar2,fechaHora ,sUsuario,sPuesto);
+                            ctx.oActualizarBackEnd(id, nuevoEstado, cant, AdicChar2,fechaHora ,sUsuario,sPuesto,kgbrr, M3r);
                         };
                         verifyRequest.onerror = function(event) { // si hay un error al guardar el dato , voy x aca
                             console.log("Error al verificar el campo 'Estado':", event.target.error);
@@ -540,8 +819,8 @@ obtenerMaxAdicChar2: async function () {
         
            
         },
-        oActualizarBackEnd:function(id, estado, cantidad ,AdicChar2,fechaHora,sUsuario,sPuesto){
-            var updatedData =[{ "Id": id, "Estado": estado, "CantEscaneada": cantidad ,"AdicChar2": AdicChar2,"AdicDec2": fechaHora,"Preparador": sUsuario,"AdicDec1": sPuesto}] ;
+        oActualizarBackEnd:function(id, estado, cantidad ,AdicChar2,fechaHora,sUsuario,sPuesto, kgbrr, M3r){
+            var updatedData =[{ "Id": id, "Estado": estado, "CantEscaneada": cantidad ,"AdicChar2": AdicChar2,"AdicDec2": fechaHora,"Preparador": sUsuario,"AdicDec1": sPuesto, "Kgbrr":kgbrr, "M3r": M3r}] ;
             this.crud("ACTUALIZAR", "ventilado",id, updatedData, "");
 
         },
@@ -551,7 +830,7 @@ obtenerMaxAdicChar2: async function () {
            
             try {
                 var datos = await this.onGetData(eanInput , busqueda ); // Realiza una sola lectura de la tabla
-                return { cantidad: datos.Cantidad, ruta: datos.Ruta, descripcion: datos.descripcion , id: datos.id, ean: datos.ean, ci: datos.ci, AdicChar2: datos.AdicChar2}; // Devuelve un objeto con la cantidad y la ruta
+                return { cantidad: datos.Cantidad, ruta: datos.Ruta, descripcion: datos.descripcion , id: datos.id, ean: datos.ean, ci: datos.ci, AdicChar2: datos.AdicChar2,Kgbrv:datos.Kgbrv, M3v:datos.M3v}; // Devuelve un objeto con la cantidad y la ruta
             } catch (error) {
                // console.error("Error al obtener la cantidad y la ruta:", error);
                 return { cantidad: -3, ruta: -1 , descripcion:""}; // o cualquier otro valor predeterminado si lo prefieres
@@ -655,11 +934,9 @@ onCierrePress:function(){
                         oViewModel.setProperty("/printEtiquetas", true);
                     });
                     
-                };  
+                }; 
 
-
-                /////
-               
+                /////               
                 oViewModel.setProperty("/isClosed", false);
                 oViewModel.setProperty("/showPasswordInput", false);
                 MessageToast.show("Transporte abierto con éxito.");
@@ -797,6 +1074,21 @@ onCierrePress:function(){
          },
           // Método para manejar la confirmación del valor ingresado en el diálogo Stop
         onStopConfirm: function() {
+            if (this.intervalId) {
+                clearInterval(this.intervalId);
+            }
+
+            this.elapsedTime = 0;
+            this.startTime = null;
+            var oModel = this.getView().getModel();
+            oModel.setProperty("/scanState", "Stopped");
+            oModel.setProperty("/stateClass", this._getStateClass("Stopped"));
+            oModel.setProperty("/elapsedTime", 0);
+            oModel.setProperty("/formattedElapsedTime", "00:00:00");
+
+            // Clear saved state from local storage
+            localStorage.removeItem("elapsedTime");
+            localStorage.removeItem("scanState");
 
             var oTable = this.byId("customTable2");
             var aItems = oTable.getItems();
@@ -1103,17 +1395,12 @@ onCierrePress:function(){
                     // Ejemplo de uso del parámetro adicional
                     console.log("Additional Parameter:", additionalParameter);
                 };
-                // Ejemplo de uso:
-var dniToDelete = 3;
-deleteRecord(dniToDelete, onSuccessFunction, onErrorFunction, "additionalParameter");
+ 
  
             }
         },
 
 //******* Fin  Funciones para el CRUD  *******/   
-     
-
-
 _fetchAndStoreOData: function () {
     var oModel = new ODataModel("/sap/opu/odata/sap/ZVENTILADO_SRV/");
     //Se leen los datos del backend y se guardan en la base local
@@ -1182,6 +1469,9 @@ onGetData: function (key,busqueda) { // busqueda =1 busca si es un producto
                         var ean = data.Ean;
                         var ci = data.CodigoInterno;
                         var AdicChar2=data.AdicChar2;
+                        var Kgbrv = data.Kgbrv;
+                        var M3v = data.M3v;
+
                         var ruta = data.LugarPDisp;// esta es la ruta
                             result = {
                             Cantidad    : cantidad, 
@@ -1190,7 +1480,9 @@ onGetData: function (key,busqueda) { // busqueda =1 busca si es un producto
                             id          : id,
                             ean         : ean,
                             ci          : ci,
-                            AdicChar2   : AdicChar2
+                            AdicChar2   : AdicChar2,
+                            Kgbrv       : Kgbrv,
+                            M3v         : M3v
                         };
                         flag=2;
                        
@@ -1236,8 +1528,6 @@ onGetData: function (key,busqueda) { // busqueda =1 busca si es un producto
                             resolve(result); 
                         }
                 }
-               
-
                 
             };
             cursorRequest.onerror = function(event) {
@@ -1249,8 +1539,6 @@ onGetData: function (key,busqueda) { // busqueda =1 busca si es un producto
         };
     }.bind(this));
 },
-
-
 
 
  //***** Método para abrir el diálogo en caso de errores *************/
@@ -1309,7 +1597,7 @@ onGetData: function (key,busqueda) { // busqueda =1 busca si es un producto
      
  },
 //////
-
+/*
 onDeleteData: function () {
     var transaction = this.db.transaction(["ventilado"], "readwrite");
     var objectStore = transaction.objectStore("ventilado");
@@ -1322,7 +1610,7 @@ onDeleteData: function () {
     requestDelete.onerror = function (event) {
         console.error("Error al eliminar el dato:", event.target.errorCode);
     };
-},
+},*/
 /********* Función general para manejar operaciones CRUD de la BD Local y devolver una promesa *****/
 manejarCRUD: function (operacion, datos, campoBusqueda = "id") {
     return new Promise((resolve, reject) => {
@@ -1490,7 +1778,100 @@ manejarCRUD: function (operacion, datos, campoBusqueda = "id") {
 
         return day + "/" + month + "/" + year + " " + hours + ":" + minutes + ":" + seconds;
     },
-  
+  /***  codigopara el reloj */
+  _getStateClass: function (state) {
+    switch (state) {
+        case "Running":
+            return "running";
+        case "Paused":
+            return "paused";
+        case "Stopped":
+            return "stopped";
+        default:
+            return "stopped";
+    }
+},
+
+_updateFormattedTime: function () {
+    var oModel = this.getView().getModel();
+    var scanState = oModel.getProperty("/scanState");
+
+    if (scanState === "Running" && this.startTime !== null) {
+        this.elapsedTime += (Date.now() - this.startTime) / 1000;
+        this.startTime = Date.now();
+    }
+
+    var seconds = Math.floor(this.elapsedTime % 60);
+    var minutes = Math.floor((this.elapsedTime / 60) % 60);
+    var hours = Math.floor(this.elapsedTime / 3600);
+
+    var formattedTime = [
+        hours.toString().padStart(2, '0'),
+        minutes.toString().padStart(2, '0'),
+        seconds.toString().padStart(2, '0')
+    ].join(":");
+
+    oModel.setProperty("/formattedElapsedTime", formattedTime);
+    oModel.setProperty("/elapsedTime", this.elapsedTime);
+
+    // Save state to local storage
+    localStorage.setItem("elapsedTime", this.elapsedTime.toString());
+    localStorage.setItem("scanState", scanState);
+},
+
+/*onStart: function () {
+    if (this.intervalId) {
+        clearInterval(this.intervalId);
+    }
+
+    this.startTime = Date.now();
+    var oModel = this.getView().getModel();
+    oModel.setProperty("/scanState", "Running");
+    oModel.setProperty("/stateClass", this._getStateClass("Running"));
+
+    this.intervalId = setInterval(this._updateFormattedTime.bind(this), 1000);
+},*/
+
+onPause: function () {
+    if (this.intervalId) {
+        clearInterval(this.intervalId);
+    }
+    
+    this.startTime = null;
+    var oModel = this.getView().getModel();
+    oModel.setProperty("/scanState", "Paused");
+    oModel.setProperty("/stateClass", this._getStateClass("Paused"));
+    oModel.setProperty("/isStarted", false);
+},
+
+onStop: function () {
+    if (this.intervalId) {
+        clearInterval(this.intervalId);
+    }
+
+    this.startTime = null;
+    var oModel = this.getView().getModel();
+    oModel.setProperty("/scanState", "Stopped");
+    oModel.setProperty("/stateClass", this._getStateClass("Stopped"));
+},
+
+onReset: function () {
+    if (this.intervalId) {
+        clearInterval(this.intervalId);
+    }
+
+    this.elapsedTime = 0;
+    this.startTime = null;
+    var oModel = this.getView().getModel();
+    oModel.setProperty("/scanState", "Stopped");
+    oModel.setProperty("/stateClass", this._getStateClass("Stopped"));
+    oModel.setProperty("/elapsedTime", 0);
+    oModel.setProperty("/formattedElapsedTime", "00:00:00");
+
+    // Clear saved state from local storage
+    localStorage.removeItem("elapsedTime");
+    localStorage.removeItem("scanState");
+}
 
 });
 

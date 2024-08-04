@@ -124,6 +124,11 @@
           "name": "Cierre",
           "pattern": "Cierre",
           "target": "Cierre"
+        },
+        {
+          "name": "Verdesafectacion",
+          "pattern": "Verdesafectacion",
+          "target": "Verdesafectacion"
         }
       ],
       "targets": {
@@ -163,6 +168,12 @@
           "transition": "slide",
           "clearControlAggregation": false,
           "viewName": "Cierre"
+        },
+        "Verdesafectacion": {
+          "viewType": "XML",
+          "transition": "slide",
+          "clearControlAggregation": false,
+          "viewName": "Verdesafectacion"
         }
       }
     },

@@ -84,7 +84,7 @@
                             <Text text="{CLIENTE}" class="boldAndLargeText" />
                             <Text text="{RAZONSOCIAL}" class="boldAndLargeText" />
                             <Text text="{ENTREGA}" class="boldAndLargeText" />
-                            <Text text="{TOT}" class="boldAndLargeText" />
+                            <Text text="{PRODV}" class="boldAndLargeText" />
                             <Text text="{KGBrV}" class="boldAndLargeText" />
                             <Text text="{M3V}" class="boldAndLargeText" />
                             <Text text="{CubTeo}" class="boldAndLargeText" />

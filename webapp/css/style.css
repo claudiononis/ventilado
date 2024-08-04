@@ -91,7 +91,7 @@
 
 .spTextBlue,
 .spTextBlack {
-    font-size: 60vh; /* Ajusta este tamaño según sea necesario */
+    font-size: 50vh; /* Ajusta este tamaño según sea necesario */
     width: 100%;
     text-align: center;
 }
@@ -152,9 +152,9 @@
     background-color: #ffffff; /* Color para filas pares */
 }
 .boldAndLargeText {
-    font-weight: bold;
-    font-size: 15px; /* Ajusta según sea necesario */
-    height: 30px;
+    font-weight: bold !important;
+    font-size: 15px !important; /* Ajusta según sea necesario */
+    height: 30px !important;
 }
 
 /* Custom CSS file (styles.css) */
@@ -241,3 +241,127 @@
 }
 
 /***  fin  estilos Desafectacion***
+
+
+/*** Stylo para descripcion  en tabla de avance scan2 */
+.text-smaller {
+    font-weight: normal !important;
+    font-size: 0.575rem !important; /* Ajusta el tamaño según tus necesidades */
+}
+
+/* Ajusta el tamaño del contenedor principal para ocupar todo el espacio disponible */
+.mainContainer {
+    height: 100%;
+    width: 100%;
+}
+
+/* Sección de encabezado, el cual se mantiene fijo en la parte izquierda */
+.headerSection {
+    height: 100%;
+}
+
+/* Asegura que la parte izquierda (75% del ancho) no se desplace */
+.leftPane {
+    flex: 3;
+    overflow: hidden;
+    height: 100%;
+}
+
+/* Asegura que la parte derecha (25% del ancho) tenga la capacidad de desplazarse */
+.rightPane {
+    flex: 1;
+    height: 100%;
+}
+
+/* Ajusta el contenedor de la tabla para ocupar todo el alto disponible y permitir el desplazamiento */
+.tableContainer {
+    height: 100%;
+    overflow-y: auto; /* Permite el desplazamiento vertical */
+}
+/* Ajusta el tamaño del contenedor principal para ocupar todo el espacio disponible */
+.mainContainer {
+    height: 100%;
+    width: 100%;
+}
+
+/* Sección de encabezado, el cual se mantiene fijo en la parte izquierda */
+.headerSection {
+    height: 100%;
+}
+
+/* Asegura que la parte izquierda (75% del ancho) no se desplace */
+.leftPane {
+    flex: 3;
+    overflow: hidden;
+    height: 100%;
+}
+
+/* Asegura que la parte derecha (25% del ancho) tenga la capacidad de desplazarse */
+.rightPane {
+    flex: 1;
+    height: 100%;
+}
+
+/* Ajusta el contenedor de la tabla para limitar el alto máximo y evitar el overflow */
+.tableContainer {
+    max-height: 900px; /* Ajusta este valor según el tamaño de la celda y el texto */
+    overflow-y: auto; /* Permite el desplazamiento vertical solo si es necesario */
+}
+
+/* Ajusta el tamaño del texto en las celdas */
+.boldAndLargeText {
+    font-size: 12px; /* Ajusta este tamaño según sea necesario */
+}
+
+/* Ajusta el alto de las celdas */
+.sapUiTableCell {
+    height: 20px; /* Ajusta este valor según sea necesario */
+}
+/*** clase para el reloj  */
+.centeredContent {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    height: 100%;
+}
+
+.stateContainer {
+    margin-top: 20px;
+    text-align: center;
+}
+
+.timerContainer {
+    margin-top: 10px;
+    text-align: center;
+}
+
+.label {
+    font-size: 18px;
+    font-weight: bold;
+    margin-bottom: 5px;
+}
+
+.timer {
+    font-size: 24px;
+    font-weight: bold;
+    color: #000;
+}
+
+.running {
+    color: green;
+    font-weight: bold;
+    font-size: 20px;
+}
+
+.paused {
+    color: orange;
+    font-weight: bold;
+    font-size: 20px;
+}
+
+.stopped {
+    color: red;
+    font-weight: bold;
+    font-size: 20px;
+}

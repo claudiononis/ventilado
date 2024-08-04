@@ -20,7 +20,7 @@ sap.ui.define([
     var datosD=[];
     return Controller.extend("ventilado.ventilado.controller.Desconsolidado", {
 
-        onInit: async function () {
+        onInit:  function () {
             this._dbConnections = []; // Array para almacenar conexiones abiertas
             // Obtener el router y attachRouteMatched
             var oRouter = sap.ui.core.UIComponent.getRouterFor(this);
@@ -31,48 +31,62 @@ sap.ui.define([
             window.addEventListener('popstate', this._handleUnload.bind(this));
 
             // Ejecutar acciones iniciales
-            await this.ejecutarAcciones();
+             this.ejecutarAcciones().catch(error => {
+                console.error('Error al ejecutar acciones iniciales:', error);
+             });
         },
 
         onRouteMatched: function () {
             // Ejecutar acciones cada vez que la ruta es navegada
-            this.ejecutarAcciones();
+            this.ejecutarAcciones().catch(error => {
+                console.error('Error al ejecutar acciones iniciales:', error);
+             });
         },
 
-        ejecutarAcciones: async function () {
-           // Lerr datos locales
-           sPuesto=localStorage.getItem('sPuesto');
-           sReparto = localStorage.getItem('sReparto');
-           sPtoPlanif = localStorage.getItem('sPtoPlanif');
-           sUsuario = localStorage.getItem('sPreparador');
-
-            await this.obtenerYProcesarDatos();            
+        ejecutarAcciones: function () {
+            // Leer datos locales
+            sPuesto = localStorage.getItem('sPuesto');
+            sReparto = localStorage.getItem('sReparto');
+            sPtoPlanif = localStorage.getItem('sPtoPlanif');
+            sUsuario = localStorage.getItem('sPreparador');
             
-            // Calcular el total de cantidadAsig
-            const totalCantidadAsig = this.datosD.reduce((total, item) => {
-                return total + (item.cantidadAsig || 0);
-            }, 0);
-
-            // Crear un nuevo modelo JSON con los datos procesados y el total
-            var oModel = new JSONModel({
-                tableData: this.datosD,
-                tableData2:this.datosD2,
-                totalCantidadAsig: totalCantidadAsig
-            });
-
-            // Asignar el modelo a la vista
+            // Crear un nuevo modelo JSON y asignarlo a la vista
+            var oModel = new sap.ui.model.json.JSONModel();
             this.getView().setModel(oModel);
-            },
-
-                     
-        obtenerYProcesarDatos: async function () {
-            try {
-                let datos = await this.obtenerDatosDeIndexedDB();
-                this.datosD = this.procesarDatos(datos);
-                this.datosD2 = this.procesarDatos2(datos);
-            } catch (error) {
-                console.log("Error:", error);
-            }
+        
+            // Obtener y procesar datos
+            return this.obtenerYProcesarDatos()
+                .then(() => {
+                    // Calcular el total de cantidadAsig
+                    const totalCantidadAsig = this.datosD.reduce((total, item) => {
+                        return total + (item.cantidadAsig || 0);
+                    }, 0);
+        
+                    // Crear un nuevo modelo JSON con los datos procesados y el total
+                    var oModel = new sap.ui.model.json.JSONModel({
+                        tableData: this.datosD,
+                        tableData2: this.datosD2,
+                        totalCantidadAsig: totalCantidadAsig
+                    });
+        
+                    // Asignar el modelo a la vista
+                    this.getView().setModel(oModel);
+                })
+                .catch(error => {
+                    console.error('Error al obtener y procesar datos:', error);
+                });
+        },
+        
+        obtenerYProcesarDatos: function () {
+            return this.obtenerDatosDeIndexedDB()
+                .then(datos => {
+                    this.datosD = this.procesarDatos(datos);
+                    this.datosD2 = this.procesarDatos2(datos);
+                })
+                .catch(error => {
+                    console.error('Error al obtener datos de IndexedDB:', error);
+                    throw error; // Propagar el error para manejarlo en la llamada superior
+                });
         },
 
         obtenerDatosDeIndexedDB: function () {
@@ -156,10 +170,10 @@ sap.ui.define([
         procesarDatos2: function(datos) {
             // Ordenar datosD2 por Codigo Interno
             datos.sort(function(a, b) {
-                if (a.Ruta < b.CodigoInterno) {
+                if (a.CodigoInterno < b.CodigoInterno) {
                     return -1;
                 }
-                if (a.Ruta > b.CodigoInterno) {
+                if (a.CodigoInterno > b.CodigoInterno) {
                     return 1;
                 }
                 return 0;

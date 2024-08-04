@@ -10,13 +10,13 @@
             <Table id="customTable2"   items="{path: '/tableData'}">
                 <columns>
                     <!-- Encabezados principales -->
-                    <Column>
+                    <Column  width="60px">
                         <Text text="Ruta" />
                     </Column>
                     <Column>
                         <Text text="Cliente" />
                     </Column>
-                    <Column>
+                    <Column width="250px">
                         <Text text="Razon Social" />
                     </Column>
                     <Column>
