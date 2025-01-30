@@ -18,7 +18,7 @@ sap.ui.define([
     var sUsuario;
     var sFecha;
     var datosD = [];
-    return Controller.extend("ventilado.ventilado.controller.Desconsolidado", {
+    return Controller.extend("ventilado.ventilado.controller.Desconsolidadov", {
 
        
 
@@ -50,15 +50,15 @@ sap.ui.define([
         },
 
 
-        ejecutarAcciones: async function () {
 
+
+        ejecutarAcciones: async function () {
             // Lerr datos locales
             sPuesto = localStorage.getItem('sPuesto');
             sReparto = localStorage.getItem('sReparto');
             sPtoPlanif = localStorage.getItem('sPtoPlanif');
             sUsuario = localStorage.getItem('sPreparador');
             var oModel = new sap.ui.model.json.JSONModel();
-            var completo = 0;
             this.getView().setModel(oModel);
             await this.obtenerYProcesarDatos();
 
@@ -76,10 +76,7 @@ sap.ui.define([
                 var entrega = item.Entrega;
                 var transporte = item.Transporte;
                 var CantidadEntrega= item.CantidadEntrega;
-
-                
-        
-          
+               // var total = item.TOT;
                 // Si el código interno no existe en el objeto de datos agrupados, crear un nuevo objeto para él
                 if (!datosAgrupados[codInterno]) {
                     datosAgrupados[codInterno] = {
@@ -88,56 +85,17 @@ sap.ui.define([
                         Transporte: transporte,
                         Entrega: entrega,
                         CantidadEntrega: CantidadEntrega,
-                        Tot: 0 ,
-                        scan: 0,
-                        Falta: 0
+                        Tot: 0
                     };
                 }
                 // Acumular el total por código interno
-                datosAgrupados[codInterno].Tot += CantidadEntrega;
-                datosAgrupados[codInterno].scan += cantidadEscaneada;
-                datosAgrupados[codInterno].Falta = datosAgrupados[codInterno].Tot - datosAgrupados[codInterno].scan;
-                //CantidadEntrega += CantidadEntrega
+                datosAgrupados[codInterno].Tot += cantidadEscaneada;
+                CantidadEntrega += CantidadEntrega;
                 // Agregar o actualizar la cantidad escaneada para la ruta correspondiente
-             //   datosAgrupados[codInterno][ruta] = cantidadEscaneada;
-                // Agregar o actualizar la cantidad escaneada y el color para la ruta correspondiente
-                var color ='';
-                var color2 =false;
-                if ((CantidadEntrega - cantidadEscaneada)== 0 )
-                    color= false;//'greenBackground';
-                else  { 
-                    if (cantidadEscaneada == 0 ){
-                        color= true;//'redBackground';
-                        color2=false;
-                    }
-                    else{
-                        
-                        color2= true;
-                        color=false;
-                    }
-                }
-                var cant =0;
-                if ( cantidadEscaneada  == 0)
-                    cant = CantidadEntrega;
-                else
-                    cant = cantidadEscaneada;
-                var cantF = CantidadEntrega - cantidadEscaneada;
-              
-                datosAgrupados[codInterno][ruta] = {
-                    cantidadEscaneada: cant,//cantidadEscaneada,
-                    cantFaltante: cantF,
-                    color: color,
-                    color2: color2
-                };
-
+                datosAgrupados[codInterno][ruta] = cantidadEscaneada;
                 // Agregar o actualizar los totales por ruta
                 if (!totalesPorRuta[ruta]) {
-                    
-                    if ((CantidadEntrega - cantidadEscaneada)== 0 )
-                        color=false;//'greenBackground';
-                    else   
-                        color=true;
-                    totalesPorRuta[ruta] = { CantidadTotal: 0, Entrega: entrega , color:color};
+                    totalesPorRuta[ruta] = { CantidadTotal: 0, Entrega: entrega };
                 }
                 totalesPorRuta[ruta].CantidadTotal += cantidadEscaneada;
             });
@@ -154,8 +112,7 @@ sap.ui.define([
             console.log(arrayDatosAgrupados);
             var arrayTotalesPorRuta = [];
             for (var ruta in totalesPorRuta) {
-                
-                arrayTotalesPorRuta.push({ Ruta: ruta, CantidadTotal: totalesPorRuta[ruta].CantidadTotal, Entrega: totalesPorRuta[ruta].Entrega ,color:totalesPorRuta[ruta].color });
+                arrayTotalesPorRuta.push({ Ruta: ruta, CantidadTotal: totalesPorRuta[ruta].CantidadTotal, Entrega: totalesPorRuta[ruta].Entrega });
             }
 
             // Crear una lista de todas las posibles rutas (01 a 30)
@@ -184,19 +141,9 @@ sap.ui.define([
 
             // Mostrar el array ordenado en la consola (solo para demostración)
             console.log(arrayTotalesPorRuta);
-             // Calcular la suma de `cantFaltante` y asignar a `completo` si es mayor que 0
-            completo = arrayDatosAgrupados.reduce((sum, item) => {
-                return sum + Object.values(item).reduce((innerSum, rutaData) => {
-                    return innerSum + (rutaData.cantFaltante || 0);
-                }, 0);
-            }, 0);
-            if (completo==0){
-                this.getView().byId("bDesafectar").setEnabled(false);
-            }
 
             // Crear un nuevo modelo JSON con ambos arrays
-           // var oModel = new sap.ui.model.json.JSONModel();
-            var oModel=this.getView().getModel();
+            var oModel = new sap.ui.model.json.JSONModel();
             oModel.setData({
                 tableData: arrayDatosAgrupados,
                 totalesPorRuta: arrayTotalesPorRuta
@@ -209,9 +156,7 @@ sap.ui.define([
             window.addEventListener('popstate', this._handleUnload.bind(this));
 
         },
-        formatColorClass: function(colorValue) {
-            return colorValue === 0 ? greenBackground : redBackground;
-        },
+
         obtenerYProcesarDatos: async function () {
             try {
                 let datos = await this.obtenerDatosDeIndexedDB();
@@ -262,7 +207,7 @@ sap.ui.define([
             });
             let resultado = {};
             datos.forEach((registro) => {
-
+                
                 resultado[registro.Id] = {
                     "Id": registro.Id,
                     "CodInterno": registro.CodigoInterno,
@@ -271,8 +216,10 @@ sap.ui.define([
                     "Ruta": String(registro.LugarPDisp).padStart(2, '0'),
                     "Transporte": registro.Transporte,
                     "Entrega": registro.Entrega,
-                    "CantidadEntrega": registro.CantidadEntrega
+                    "CantidadEntrega": registro.CantidadEntrega,
+                    "TOT": registro.CantidadEntrega,
                 };
+                
 
             });
 
@@ -285,10 +232,8 @@ sap.ui.define([
             return cantidadTotal === 0 ? "" : cantidadTotal;
         },
 
-        formatRuta: function (cantidadTotal, ruta,entrega) {
-            
-           // return cantidadTotal === 0 ? "" : ruta;
-            return !entrega ? "" : ruta;
+        formatRuta: function (cantidadTotal, ruta) {
+            return cantidadTotal === 0 ? "" : ruta;
         },
         /******   Cuando se sale de la pagina se cierran todas las conexiones a la base local */
         onExit: function () {
@@ -304,124 +249,62 @@ sap.ui.define([
         _handleUnload: function () {
             this.closeAllDbConnections();
         },
-        onNavToScan: function() {
-            var oRouter = sap.ui.core.UIComponent.getRouterFor(this);
-            oRouter.navTo("Scan"); 
-        },
-
-        onCellClick: function (oEvent) {
-            // Obtener la celda que fue clickeada
-            var oClickedCell = oEvent.getSource();
-        
-            // Obtener la tabla
-            var oTable = this.byId("idTbDesconsolidado");
-        
-            // Remover cualquier clase de columna seleccionada previamente
-            oTable.$().find('.highlightColumn').removeClass('highlightColumn');
-        
-            // Aplicar la clase CSS solo a las celdas de la columna seleccionada
-            var iClickedColumnIndex = oTable.indexOfColumn(oClickedCell.getParent());
-            oTable.getItems().forEach(function (oItem) {
-                var oCell = oItem.getCells()[iClickedColumnIndex];
-                oCell.addStyleClass("highlightColumn");
-            });
-        },
 
         onVerDesafectacionPress: function () {
             this.onExit();
             const oRouter = sap.ui.core.UIComponent.getRouterFor(this);
             oRouter.navTo("Verdesafectacion");
         },
-        onDesafectacionPress:  function () {
-            var oModel = new ODataModel("/sap/opu/odata/sap/ZVENTILADO_SRV/");
-            var aFilters = [];
-            aFilters.push(new Filter("Transporte", FilterOperator.EQ, localStorage.getItem('sReparto')));
-            var ctx = this;
-           
-            oModel.read("/zdesafectacionSet", {
-                filters: aFilters,
-                success: function (oData) {
-                    // Verificar si oData contiene registros
-                    if (oData.results && oData.results.length > 0) {
-                         // Si hay registros, ya se hizo la desafectacion
-                         MessageBox.warning(" No se puede realizar la desafectacion!! ya fue realizada anteriormente", {
-                            actions: [MessageBox.Action.OK, MessageBox.Action.CANCEL],
-                            onClose: function (oAction) {
-                                if (oAction === MessageBox.Action.OK) {
+        onDesafectacionPress: function () {
+            ctx = this;
+            MessageBox.warning("ATENCION! Se van a desafectar en SAP los materiales indicados para cada ENTREGA, confirma?", {
+                actions: [MessageBox.Action.OK, MessageBox.Action.CANCEL],
+                onClose: function (oAction) {
+                    if (oAction === MessageBox.Action.OK) {
+                        // Codigo para la desafectacion
+                        var oModel = ctx.getView().getModel();
+                        var oModel = new sap.ui.model.odata.v2.ODataModel("/sap/opu/odata/sap/ZVENTILADO_SRV/", {
+                            useBatch: false,
+                            defaultBindingMode: "TwoWay",
+                            deferredGroups: ["batchGroup1"]
+                        });
+                        oModel.refreshMetadata();
+                        BusyIndicator.show();
+                        oModel.callFunction("/GenerarTransporte", {  // se llama a la function import
+                            method: "GET",
+                            urlParameters: {
+                                transporte: "BI_" + sReparto, // pasa los parametros strings
+                                pto_planificacion: '0000'//sPtoPlanificacion
+                            },
+                            success: function (oData) {
+                                // Manejar éxito
+                                // MessageToast.show("Se cargaron los datos para el ventilado");
+                                // Procesar la respuesta aquí
 
+                                var estado = oData.Ean;
+                                // Aquí se puede  trabajar con los datos recibidos
+                                console.log("Estado: ", estado);
+                                BusyIndicator.hide();  // Ocultar 
+                                MessageToast.show("Se conpleto la Desafectacion de material");
+                            },
+                            error: function (oError) {
+                                // Manejar error
+                                var sErrorMessage = "";
+                                try {
+                                    var oErrorResponse = JSON.parse(oError.responseText);
+                                    sErrorMessage = oErrorResponse.error.message.value;
+                                } catch (e) {
+                                    sErrorMessage = "Error desconocido,  revise conexion de Internet y VPN";
                                 }
-                              }            
-                            });                                        
+                                BusyIndicator.hide();  // Ocultar 
+                                MessageToast.show(sErrorMessage);
+                            },
+                            timeout: 10000 // Establecer un tiempo de espera de 10 segundos
+                        });
 
-                    } else {
-                       // Si no hay registros, no se hizo desafectacion
-                       console.log("No hay registros en el OData.");//No serealizo la  desafectacion                
-                    MessageBox.warning("ATENCION! Se van a desafectar en SAP los materiales indicados para cada ENTREGA, confirma?", {
-                        actions: [MessageBox.Action.OK, MessageBox.Action.CANCEL],
-                        onClose: function (oAction) {
-                            if (oAction === MessageBox.Action.OK) {
-                              
-                                // Codigo para la desafectacion
-                                var oModel = ctx.getView().getModel();
-                                var oModel = new sap.ui.model.odata.v2.ODataModel("/sap/opu/odata/sap/ZVENTILADO_SRV/", {
-                                    useBatch: false,
-                                    defaultBindingMode: "TwoWay",
-                                    deferredGroups: ["batchGroup1"]
-                                });
-                                oModel.refreshMetadata();
-                                BusyIndicator.show();
-                                oModel.callFunction("/GenerarTransporte", {  // se llama a la function import
-                                    method: "GET",
-                                    urlParameters: {
-                                        transporte: "BI_" + sReparto, // pasa los parametros strings
-                                        pto_planificacion: '0000'//sPtoPlanificacion
-                                    },
-                                    success: function (oData) {
-                                        // Manejar éxito
-                                        // MessageToast.show("Se cargaron los datos para el ventilado");
-                                        // Procesar la respuesta aquí
-
-                                        var estado = oData.Ean;
-                                        // Aquí se puede  trabajar con los datos recibidos
-                                        console.log("Estado: ", estado);
-                                        BusyIndicator.hide();  // Ocultar 
-                                        MessageToast.show("Se conpleto la Desafectacion de material");
-                                    },
-                                    error: function (oError) {
-                                        // Manejar error
-                                        var sErrorMessage = "";
-                                        try {
-                                            var oErrorResponse = JSON.parse(oError.responseText);
-                                            sErrorMessage = oErrorResponse.error.message.value;
-                                        } catch (e) {
-                                            sErrorMessage = "Error desconocido,  revise conexion de Internet y VPN";
-                                        }
-                                        BusyIndicator.hide();  // Ocultar 
-                                        MessageToast.show(sErrorMessage);
-                                    },
-                                    timeout: 10000 // Establecer un tiempo de espera de 10 segundos
-                                });
-
-                            }
-                        }
-                    });
                     }
-                },
-                error: function (oError) {
-                    console.error("Error al leer datos del servicio OData:", oError);
-                    reject(oError);  // Si hay un error, rechazamos la promesa
                 }
             });
-
-
-
-
-
-                
-         //   }
-
-
-           
         }
     });
 

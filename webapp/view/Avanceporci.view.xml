@@ -1,11 +1,11 @@
-<mvc:View controllerName="ventilado.ventilado.controller.Desconsolidado"
+<mvc:View controllerName="ventilado.ventilado.controller.Avanceporci"
     xmlns:mvc="sap.ui.core.mvc" displayBlock="true"
     xmlns="sap.m"
     xmlns:m="sap.m"
     xmlns:l="sap.ui.layout"
     height="100%" width="100%">
 
-    <Page title="Desafectacion">
+    <Page title="Avance por Codigo.">
         <content>
             <Button text="Scan de productos" press="onNavToScan" class="buttonSpacing"/>
             <ScrollContainer width="100%" height="88%" horizontal="true" vertical="true">
@@ -660,20 +660,6 @@
                     </Table>
                 </ScrollContainer>
             </content>
-        <customHeader>
-            <Toolbar>
-              <ToolbarSpacer />
-              <Button  id="bDesafectar"
-                text="Desafectar Material en SAP"
-                type="Reject"
-                press="onDesafectacionPress"
-                />
-                <Button
-                text="Ver Material desafectado"
-                type="Reject"
-                press="onVerDesafectacionPress"
-                />
-            </Toolbar>
-          </customHeader>
+       
     </Page>
 </mvc:View>

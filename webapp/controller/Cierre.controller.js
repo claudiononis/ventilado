@@ -2,18 +2,18 @@ sap.ui.define([
     "sap/ui/core/mvc/Controller",
     "sap/m/MessageToast",
     "sap/ui/model/json/JSONModel",
-   // "sap/ui/model/odata/v2/ODataModel",
+    // "sap/ui/model/odata/v2/ODataModel",
     "sap/ui/model/Filter",
     "sap/ui/model/FilterOperator",
     "sap/m/MessageBox",
-], function (Controller, MessageToast, JSONModel,  Filter, FilterOperator, MessageBox) {
+], function (Controller, MessageToast, JSONModel, Filter, FilterOperator, MessageBox) {
     "use strict";
     var ctx;  // Variable global en el controlador para guardar el contexto
     var sPuesto;
     var sUsuario;
     var sReparto;
     var sPtoPlanif;
-    var datosD=[];
+    var datosD = [];
     return Controller.extend("ventilado.ventilado.controller.Cierre", {
 
         onInit: function () {
@@ -28,7 +28,7 @@ sap.ui.define([
 
             // Ejecutar acciones iniciales
             this.ejecutarAcciones();
-            
+
         },
 
         onRouteMatched: function () {
@@ -47,7 +47,7 @@ sap.ui.define([
             this.obtenerYProcesarDatos();
         },
 
-        obtenerYProcesarDatos:  function () {
+        obtenerYProcesarDatos: function () {
             this.obtenerDatosDeIndexedDB()
                 .then(datos => {
                     datosD = this.procesarDatos(datos);
@@ -123,12 +123,12 @@ sap.ui.define([
                 let KGBrV = registro.Kgbrv;
                 let M3R = registro.M3r;
                 let KGBrR = registro.Kgbrr;
-                let Cubre= registro.Cubre;      
+                let Cubre = registro.Cubre;
 
                 if (!resultado[ruta]) {
-                   
+
                     // Inicializa el objeto de la ruta si no existe
-                    
+
                     resultado[registro.LugarPDisp] = {
                         "Ruta": ruta,
                         "CLIENTE": registro.Destinatario,
@@ -152,45 +152,45 @@ sap.ui.define([
                         "M3H2OR": registro.M3H2OR,
                         "porcReal": registro.porcReal,
                         "TOT": 0,
-                        "TOT2":0
+                        "TOT2": 0
                     };
-                  
+
                 }
 
                 // Suma la cantidad al total
                 resultado[ruta]["PRODV"] += cantidad;
                 resultado[ruta]["ProdR"] += cantidadEsc;
-               
-               // resultado[ruta]["KGBrV"] += (parseFloat(resultado[ruta]["KGBrR"]) || 0 + Number(KGBrV) || 0).toFixed(2).replace(/^0+(\d)/, '$1');
+
+                // resultado[ruta]["KGBrV"] += (parseFloat(resultado[ruta]["KGBrR"]) || 0 + Number(KGBrV) || 0).toFixed(2).replace(/^0+(\d)/, '$1');
                 resultado[ruta]["KGBrV"] = (parseFloat(resultado[ruta]["KGBrV"]) + Number(KGBrV) || 0)
-                .toFixed(2)
-                .replace(/^(-?)0+(?=\d)/, '$1');
+                    .toFixed(2)
+                    .replace(/^(-?)0+(?=\d)/, '$1');
                 resultado[ruta]["M3V"] = (parseFloat(resultado[ruta]["M3V"]) + Number(M3v) || 0).toFixed(3).replace(/^0+(\d)/, '$1');
 
 
                 resultado[ruta]["KGBrR"] = (parseFloat(resultado[ruta]["KGBrR"]) + Number(KGBrR) || 0)
-                .toFixed(2)
-                .replace(/^(-?)0+(?=\d)/, '$1');
+                    .toFixed(2)
+                    .replace(/^(-?)0+(?=\d)/, '$1');
 
 
                 resultado[ruta]["M3R"] = (parseFloat(resultado[ruta]["M3R"]) + Number(M3R) || 0).toFixed(3).replace(/^0+(\d)/, '$1');
                 if (Number(Cubre) !== 0) {
-                    resultado[ruta]["KgbxCubR"]= (parseFloat(resultado[ruta]["KgbxCubR"]) + (Number(KGBrR) / (Number(Cubre)) ) || 0).toFixed(2);
+                    resultado[ruta]["KgbxCubR"] = (parseFloat(resultado[ruta]["KgbxCubR"]) + (Number(KGBrR) / (Number(Cubre))) || 0).toFixed(2);
                 }
-                else 
-                    resultado[ruta]["KgbxCubR"]=0;
+                else
+                    resultado[ruta]["KgbxCubR"] = 0;
 
                 resultado[ruta]["CubTeo"] += Math.ceil(registro.M3v / 0.077);
-              //  resultado[ruta]["KgBxCub"] += (Number(KGBrv) || 0)/(registro.M3v / 0.077);
-              // Calcula CubTeo y KgBxCub
-    resultado[ruta]["CubTeo"] = resultado[ruta]["M3V"] / 0.077;
-    resultado[ruta]["KgBxCub"] = resultado[ruta]["CubTeo"] !== 0 ? resultado[ruta]["KGBrV"] / resultado[ruta]["CubTeo"] : 0;
+                //  resultado[ruta]["KgBxCub"] += (Number(KGBrv) || 0)/(registro.M3v / 0.077);
+                // Calcula CubTeo y KgBxCub
+                resultado[ruta]["CubTeo"] = resultado[ruta]["M3V"] / 0.077;
+                resultado[ruta]["KgBxCub"] = resultado[ruta]["CubTeo"] !== 0 ? resultado[ruta]["KGBrV"] / resultado[ruta]["CubTeo"] : 0;
 
-    // Asegura que CubTeo y KgBxCub sean números con dos decimales
-    resultado[ruta]["CubTeo"] = Math.ceil(resultado[ruta]["CubTeo"].toFixed(2));
-    resultado[ruta]["KgBxCub"] = parseFloat((resultado[ruta]["KGBrV"]/resultado[ruta]["CubTeo"] ).toFixed(2));
-    resultado[ruta]["M3H2O"] = parseFloat((resultado[ruta]["M3V"]/resultado[ruta]["CubTeo"] ).toFixed(2));
-    resultado[ruta]["M3H2OR"] = parseFloat((resultado[ruta]["M3R"]/resultado[ruta]["CubR"] ).toFixed(2));
+                // Asegura que CubTeo y KgBxCub sean números con dos decimales
+                resultado[ruta]["CubTeo"] = Math.ceil(resultado[ruta]["CubTeo"].toFixed(2));
+                resultado[ruta]["KgBxCub"] = parseFloat((resultado[ruta]["KGBrV"] / resultado[ruta]["CubTeo"]).toFixed(2));
+                resultado[ruta]["M3H2O"] = parseFloat((resultado[ruta]["M3V"] / resultado[ruta]["CubTeo"]).toFixed(2));
+                resultado[ruta]["M3H2OR"] = parseFloat((resultado[ruta]["M3R"] / resultado[ruta]["CubR"]).toFixed(2));
             });
 
             // Convierte el objeto resultado en un array

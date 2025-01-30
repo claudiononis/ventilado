@@ -1,16 +1,18 @@
 <!-- StopDialog.fragment.xml -->
-<core:FragmentDefinition xmlns="sap.m" xmlns:core="sap.ui.core">
+<core:FragmentDefinition xmlns="sap.m"
+    xmlns:core="sap.ui.core">
 
-    <Dialog id="dialogoStop" title="Terminaste con el Escaneo?" afterClose="onStopDialogClose"  >
-       <VBox >
-        <VBox alignItems="Center">
-            <Label text="Completa la cantidad de cubetas reales que usaste y confirma." class="tituloSecundario" />
-        </VBox>
-           
-            <Table id="customTable2"   items="{path: '/tableData'}">
+    <Dialog id="dialogoStop" title="Terminaste con el Escaneo?" afterClose="onStopDialogClose">
+        <VBox >
+            <VBox alignItems="Center">
+                <Label text="Completa la cantidad de cubetas reales que usaste y confirma." class="tituloSecundario" />
+            </VBox>
+
+            <Table id="customTable2" items="{path: '/tableData3'}" growing="true"
+            growingThreshold="20" growingScrollToLoad="true">
                 <columns>
                     <!-- Encabezados principales -->
-                    <Column  width="60px">
+                    <Column width="60px">
                         <Text text="Ruta" />
                     </Column>
                     <Column>
@@ -50,7 +52,7 @@
                             <Text text="{FALTA}" />
                             <Text text="{Cub TEO}" />
                             <Input value="{C Real}" liveChange="onInputChange1" />
-                            <Input value="{Pa}" liveChange="onInputChange2" />                            
+                            <Input value="{Pa}" liveChange="onInputChange2" />
                         </cells>
                     </ColumnListItem>
                 </items>
@@ -58,5 +60,5 @@
             <Button text="Confirmar" type="Emphasized" press="onStopConfirm"/>
         </VBox>
     </Dialog>
-    
+
 </core:FragmentDefinition>

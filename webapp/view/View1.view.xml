@@ -1,7 +1,7 @@
 <mvc:View controllerName="ventilado.ventilado.controller.View1"
     xmlns:mvc="sap.ui.core.mvc" displayBlock="true"
     xmlns="sap.m">
-    
+
     <Page title="Inicio de Sesion" class="sapUiContentPadding">
         <content>
             <VBox class="sapUiSmallMargin" justifyContent="Center" alignItems="Center">
@@ -34,7 +34,10 @@
                         <Button text="Buscar datos" press="onBuscarPress" type="Emphasized" class="actionButton"/>
                         <Button id="btScan" text="Scan de productos" press="onScanPress" enabled="false" class="actionButton"/>
                         <Button id="btLog" text="Ver Log" press="onLogPress" enabled="false" class="actionButton"/>
-                        <Button id="btAvance" text="Avance" press="onAvancePPress" enabled="false" class="actionButton"/>
+                        <HBox width="100%" justifyContent="SpaceBetween">
+                            <Button id="btAvance" text="Avance por Codigo" press="onAvancePPress" enabled="false" class="actionButton avanceButton"/>
+                            <Button id="btAvanceRuta" text="Avance  por  Ruta" press="onAvanceRutaPress" enabled="false" class="actionButton avanceButton"/>
+                        </HBox>
                         <Button id="btDesconsolidado" text="Desafectacion" press="onDesconsolidadoPress" enabled="false" type="Reject" class="actionButton"/>
                         <Button id="btCierre" text="Cierre" press="onCierrePress" enabled="false" type="Reject" class="actionButton"/>
                     </VBox>

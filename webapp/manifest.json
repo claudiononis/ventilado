@@ -121,6 +121,16 @@
           "target": "Avance"
         },
         {
+          "name": "Avance2",
+          "pattern": "Avance2",
+          "target": "Avance2"
+        },
+        {
+          "name": "Avanceporci",
+          "pattern": "Avanceporci",
+          "target": "Avanceporci"
+        },
+        {
           "name": "Cierre",
           "pattern": "Cierre",
           "target": "Cierre"
@@ -162,6 +172,19 @@
           "transition": "slide",
           "clearControlAggregation": false,
           "viewName": "Avance"
+        },
+        "Avance2": {
+          "viewType": "XML",
+          "transition": "slide",
+          "clearControlAggregation": false,
+          "viewName": "Avance2"
+        },
+        
+        "Avanceporci": {
+          "viewType": "XML",
+          "transition": "slide",
+          "clearControlAggregation": false,
+          "viewName": "Avanceporci"
         },
         "Cierre": {
           "viewType": "XML",
