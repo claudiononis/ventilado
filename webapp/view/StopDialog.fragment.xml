@@ -8,23 +8,23 @@
                 <Label text="Completa la cantidad de cubetas reales que usaste y confirma." class="tituloSecundario" />
             </VBox>
 
-            <Table id="customTable2" items="{path: '/tableData3'}" growing="true"
-            growingThreshold="20" growingScrollToLoad="true">
-                <columns>
-                    <!-- Encabezados principales -->
-                    <Column width="60px">
-                        <Text text="Ruta" />
-                    </Column>
-                    <Column>
-                        <Text text="Cliente" />
-                    </Column>
-                    <Column width="250px">
-                        <Text text="Razon Social" />
-                    </Column>
-                    <Column>
-                        <Text text="TOT"/>
-                    </Column>
-                    <Column>
+                <Table id="customTable2" items="{path: '/tableData3'}" growing="true"
+                growingThreshold="20" growingScrollToLoad="true">
+                    <columns>
+                        <!-- Encabezados principales -->
+                        <Column width="60px">
+                            <Text text="Ruta" />
+                        </Column>
+                        <Column>
+                            <Text text="Cliente" />
+                        </Column>
+                        <Column width="250px">
+                            <Text text="Razon Social" />
+                        </Column>
+                        <Column>
+                            <Text text="TOT"/>
+                        </Column>
+                        <Column>
                         <Text text="SCAN" />
                     </Column>
                     <Column>
@@ -34,11 +34,25 @@
                         <Text text="Cub TEO" />
                     </Column>
                     <Column>
+                        <!-- Texto sumario encima de la columna -->
+                        <VBox>
+                            <Text text="{/realCubetasTotal}" class="sapMTextEmphasized" />
+                            <Text text="C Real" />
+                        </VBox>
+                    </Column>
+                    <Column>
+                        <!-- Texto sumario encima de la columna -->
+                        <VBox>
+                            <Text text="{/realPalletsTotal}" class="sapMTextEmphasized" />
+                            <Text text="Pa" />
+                        </VBox>
+                    </Column>
+                    <!-- <Column>
                         <Text text="C Real" />
                     </Column>
                     <Column>
                         <Text text="Pa" />
-                    </Column>
+                    </Column> -->
                 </columns>
                 <items>
                     <!-- Filas de datos -->
@@ -51,8 +65,10 @@
                             <Text text="{SCAN}" />
                             <Text text="{FALTA}" />
                             <Text text="{Cub TEO}" />
-                            <Input value="{C Real}" liveChange="onInputChange1" />
-                            <Input value="{Pa}" liveChange="onInputChange2" />
+                           
+                <Input value="{C Real}" liveChange="onRealCubetasChange" />
+                <!-- Input para Pa con evento de cambio -->
+                <Input value="{Pa}" liveChange="onPalletsChange" />
                         </cells>
                     </ColumnListItem>
                 </items>

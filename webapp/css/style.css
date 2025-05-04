@@ -203,7 +203,7 @@
 /***  Inicio  estilos Desafectacion***
 /* Rotacion a 45 grados de texto */
 .customColumnHeader .sapMLabel {
-    height: 70px;
+    height: 50px;
     transform: rotate(-40deg); /* Ajusta el ángulo de rotación según tus necesidades */
     white-space: nowrap; /* Evita que el texto se envuelva en una nueva línea */
   
@@ -415,4 +415,14 @@
 }
 .columnGray {
     background-color: #f0f0f0; /* Gris claro */
+}
+
+.customPageHeight {
+    height: 100vh; /* Altura total de la ventana */
+    display: flex;
+    flex-direction: column;
+}
+
+.customTableHeight {
+    height: 90%; /* Altura de la tabla ajustada al 90% */
 }

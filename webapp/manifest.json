@@ -96,9 +96,7 @@
         {
           "name": "RouteView1",
           "pattern": "",
-          "target": [
-            "TargetView1"
-          ]
+          "target": ["TargetView1"]
         },
         {
           "name": "Scan",
@@ -179,7 +177,7 @@
           "clearControlAggregation": false,
           "viewName": "Avance2"
         },
-        
+
         "Avanceporci": {
           "viewType": "XML",
           "transition": "slide",

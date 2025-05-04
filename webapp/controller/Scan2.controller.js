@@ -184,7 +184,7 @@ sap.ui.define([
             try {
                 var oModel = this.getView().getModel(); // Obtener el modelo de la vista
                 var sStarted ;
-                oModel.setProperty("/desafectacion", false)
+              //  oModel.setProperty("/desafectacion", false)
                 if (oModel.getProperty("/isStarted")){
                     oModel.setProperty("/isStarted", true);                   
                     sStarted = true;
@@ -334,9 +334,14 @@ sap.ui.define([
                     codConfirmacionData: codConfirmacionData,
                     Kgbrv: '',
                     M3v: '',
-                    cubTeorica: 0
+                    cubTeorica: 0,
+                    realCubetasTotal: 0,
+                    realPalletsTotal: 0
 
                 });
+                // Calcular los totales iniciales
+                oModel.setProperty("/realCubetasTotal", "Total : "+tableDataArray.reduce((sum, item) => sum + (parseFloat(item["C Real"]) || 0), 0));
+                oModel.setProperty("/realPalletsTotal" , "Total : "+tableDataArray.reduce((sum, item) => sum + (parseFloat(item["Pa"]) || 0), 0));
                 this.getView().setModel(oModel);
 
                 console.log(tableDataArray);
@@ -1521,6 +1526,37 @@ sap.ui.define([
           
 
         },
+
+        onRealCubetasChange: function (oEvent) {
+            const oInput = oEvent.getSource();
+            const sPath = oInput.getBindingContext().getPath(); // Obtener el índice del elemento
+            const oModel = this.getView().getModel();
+            
+            // Actualizar el valor ingresado en el modelo
+            const sValue = parseFloat(oEvent.getParameter("value")) || 0;
+            oModel.setProperty(sPath + "/C Real", sValue);
+        
+            // Recalcular el total de Cubetas Reales
+            const aData = oModel.getProperty("/tableData3");
+            const totalCubetas = aData.reduce((sum, item) => sum + (parseFloat(item["C Real"]) || 0), 0);
+            oModel.setProperty("/realCubetasTotal", "Total: " + totalCubetas);
+        },
+        
+        onPalletsChange: function (oEvent) {
+            const oInput = oEvent.getSource();
+            const sPath = oInput.getBindingContext().getPath(); // Obtener el índice del elemento
+            const oModel = this.getView().getModel();
+        
+            // Actualizar el valor ingresado en el modelo
+            const sValue = parseFloat(oEvent.getParameter("value")) || 0;
+            oModel.setProperty(sPath + "/Pa", sValue);
+        
+            // Recalcular el total de Pallets
+            const aData = oModel.getProperty("/tableData3");
+            const totalPallets = aData.reduce((sum, item) => sum + (parseFloat(item["Pa"]) || 0), 0);
+            oModel.setProperty("/realPalletsTotal", "Total: " + totalPallets);
+        },
+
         // Método para manejar la confirmación del valor ingresado en el diálogo Stop
         onStopConfirm: function () {
             if (this.intervalId) {

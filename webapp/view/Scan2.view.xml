@@ -7,7 +7,7 @@
         <VBox class="mainContainer">
             <HBox class="headerSection">
                 <VBox class="leftPane">
-                    <HBox class="stateContainer" justifyContent="SpaceBetween">
+                    <!-- <HBox class="stateContainer" justifyContent="SpaceBetween">
                         <VBox>
                             <Text text="State:" class="label" />
                             <Text text="{/scanState}" class="{= ${/scanState} === 'Running' ? 'running' : ${/scanState} === 'Paused' ? 'paused' : 'stopped' }" />
@@ -16,7 +16,7 @@
                             <Text text="Tiempo:" class="label" />
                             <Text text="{/formattedElapsedTime}" class="timer" />
                         </VBox>
-                    </HBox>
+                    </HBox> -->
                      <!-- Botones para navegar -->
                     <HBox>
                         <Button text="Avance por Codigo" press="onNavToAvanceCodigo" class="buttonSpacing" />
@@ -40,15 +40,13 @@
 
                     <HBox class="inputSection">
                         <Label id="lEan" text="EAN / Cod.Int" class="label" />
-                        <Input id="eanInput" enabled="{/isStarted}" visible="{/desafectacion}" class="inputEan" submit="onEanInputSubmit" />
+                        <Input id="eanInput" enabled="{/isStarted}"  class="inputEan" submit="onEanInputSubmit" />
                         <Button id="borrar" icon="sap-icon://delete" press="onClearEanInput" class="clearButton buttonSpacing" /> 
                         <Button id="parcialButton" text="Parcial" press="onParcialPress" enabled="false" />
                         <Button id="btCi2" enabled="false" text="COD. INTERNO" type="Reject" press="onOpenCodeInputDialog" class="button" />
                         <Label id="edtCI" text="" class="inputCodigoIntern" width="100px" />
                         <Label id="lDescripcion" text="" class="inputDescripcion" />
                     </HBox>
-
-
 
                     <HBox class="spSection">
                         <VBox class="spBox">
