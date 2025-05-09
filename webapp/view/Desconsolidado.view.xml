@@ -480,6 +480,28 @@ height="100%">
                     </template>
                 </Column>
 
+                <Column width="90px">
+                    <m:VBox class="customColumnHeader">                                    
+                        <m:Label text="{/totalesPorRuta/19/Entrega}" class="customColumnHeader sameHeight" wrapping="false" />
+                        <m:Text text="{path: '/totalesPorRuta/19/CantidadTotal', formatter: '.formatCantidadTotal'}" class="sameHeight" />
+                        <m:Text text="{parts: [{path: '/totalesPorRuta/19/CantidadTotal'}, {path: '/totalesPorRuta/19/Ruta'},{path: '/totalesPorRuta/19/Entrega'}], formatter: '.formatRuta'}" class="sameHeight" />
+                    </m:VBox>
+                    <template>
+                        <m:HBox  class="columnGray">
+                            <!-- Elemento con cantidadEscaneada -->
+                            <m:Text text="{20/cantidadEscaneada}" class="boldAndLargeText fixedWidthText" visible="{= ${20/color} === false}" />
+                            <!-- Separación -->
+                                  <m:Label text="" width="4px" />
+                            <!-- Indicador en rojo y verde, asociado a una variable del modelo -->
+                            <m:Text text="{20/cantidadEscaneada}"  class="redBackground fixedWidthText boldAndLargeText" visible="{= ${20/color} === true}" />
+                            <m:Text text="..."  class="greenBackground fixedWidthText boldAndLargeText" visible="{= ${20/color} === false}" />
+                            <m:Text text="{20/cantFaltante}"  class="orangeBackground fixedWidthText boldAndLargeText" visible="{= ${20/color2} === true}" />
+                        </m:HBox>
+                    </template>
+                </Column>
+
+
+
 
                 <Column width="90px">
                     <m:VBox class="customColumnHeader">                                    
