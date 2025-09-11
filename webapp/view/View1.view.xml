@@ -40,6 +40,7 @@
                         </HBox>
                         <Button id="btDesconsolidado" text="Desafectacion" press="onDesconsolidadoPress" enabled="false" type="Reject" class="actionButton"/>
                         <Button id="btCierre" text="Cierre" press="onCierrePress" enabled="false" type="Reject" class="actionButton"/>
+                        <Button id="btLogTransporte" text="Log de Transporte" press="onAdminUnlockLog" type="Emphasized" width="100%" class="actionButton"/>
                     </VBox>
                 </Panel>
             </VBox>
