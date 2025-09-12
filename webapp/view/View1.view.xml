@@ -32,7 +32,7 @@
                 <Panel headerText="Acciones" class="sapUiResponsiveMargin">
                     <VBox>
                         <Button text="Buscar datos" press="onBuscarPress" type="Emphasized" class="actionButton"/>
-                        <Button id="btScan" text="Scan de productos" press="onScanPress" enabled="false" class="actionButton"/>
+                       <!-- <Button id="btScan" text="Scan de productos" press="onScanPress" enabled="false" class="actionButton"/>  -->
                         <Button id="btLog" text="Ver Log" press="onLogPress" enabled="false" class="actionButton"/>
                         <HBox width="100%" justifyContent="SpaceBetween">
                             <Button id="btAvance" text="Avance por Codigo" press="onAvancePPress" enabled="false" class="actionButton avanceButton"/>

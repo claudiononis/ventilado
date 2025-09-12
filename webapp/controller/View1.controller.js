@@ -517,7 +517,7 @@ sap.ui.define(
                   });
                 }
 
-                ctx.getView().byId("btScan").setEnabled(true);
+                //ctx.getView().byId("btScan").setEnabled(true);
                 ctx.getView().byId("btLog").setEnabled(true);
                 ctx.getView().byId("btAvance").setEnabled(true);
                 ctx.getView().byId("btCierre").setEnabled(true);
@@ -625,4 +625,4 @@ sap.ui.define(
       },
     });
   }
-);
+);////

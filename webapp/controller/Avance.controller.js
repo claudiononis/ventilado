@@ -69,8 +69,8 @@ sap.ui.define(
             const totalTot = this.datosD.reduce((total, item) => total + (item.TOT || 0), 0);
             const totalScan = this.datosD.reduce((total, item) => total + (item.SCAN || 0), 0);
             const totalFaltan = this.datosD.reduce((total, item) => total + (item.FALTA || 0), 0);
-       //     const totalKilo = this.datosD.reduce((total, item) => total + (parseFloat(item.KILO) || 0), 0);
-       //     const totalM3 = this.datosD.reduce((total, item) => total + (parseFloat(item.M3) || 0), 0);
+            //     const totalKilo = this.datosD.reduce((total, item) => total + (parseFloat(item.KILO) || 0), 0);
+            //     const totalM3 = this.datosD.reduce((total, item) => total + (parseFloat(item.M3) || 0), 0);
             const totalKilo = parseFloat(this.datosD.reduce((total, item) => total + (parseFloat(item.KILO) || 0), 0).toFixed(1));
             const totalM3 = parseFloat(this.datosD.reduce((total, item) => total + (parseFloat(item.M3) || 0), 0).toFixed(3));
             const totalCubTeo = this.datosD.reduce((total, item) => total + (item.CubTEO || 0), 0);
@@ -159,8 +159,8 @@ sap.ui.define(
           let cantidad = registro.CantidadEntrega;
           let sCantEscaneada = registro.CantEscaneada;
           if (!resultado[ruta]) {
-             // Inicializa el objeto de la ruta si no existe
-             resultado[registro.LugarPDisp] = {
+            // Inicializa el objeto de la ruta si no existe
+            resultado[registro.LugarPDisp] = {
               Ruta: ruta,
               TOT: 0,
               SCAN: 0,
@@ -171,7 +171,7 @@ sap.ui.define(
               KILO: 0,
               M3: 0,//registro.M3teo,
               CLIENTE: registro.Destinatario,
-              
+
             };
           }
 
@@ -179,7 +179,7 @@ sap.ui.define(
           resultado[ruta]["TOT"] += cantidad;
           resultado[ruta]["SCAN"] += Number(sCantEscaneada) || 0;
           resultado[ruta]["FALTA"] =
-          resultado[ruta]["TOT"] - resultado[ruta]["SCAN"];
+            resultado[ruta]["TOT"] - resultado[ruta]["SCAN"];
           //resultado[ruta]["KILO"] += parseFloat(registro.Kgbrv) || 0;
           //resultado[ruta]["M3"] += parseFloat(registro.M3v) || 0;
           resultado[ruta]["KILO"] = (parseFloat(resultado[ruta]["KILO"]) + (parseFloat(registro.Kgbrv) || 0)).toFixed(1);
@@ -255,10 +255,37 @@ sap.ui.define(
         this.closeAllDbConnections();
       },
 
-      onNavToScan: function() {
+      onNavToScan: function () {
         var oRouter = sap.ui.core.UIComponent.getRouterFor(this);
-        oRouter.navTo("Scan"); 
-    }
+        oRouter.navTo("Scan");
+        const oModel = this.getView().getModel();
+          const aData = oModel.getProperty("/tableData");
+
+        // Cantidad de registros/renglones
+        const cantidadRegistros = aData.length;
+
+        // Totalizar columnas
+        const totalKilo = aData.reduce(
+          (sum, item) => sum + (parseFloat(item.KILO) || 0),
+          0
+        );
+        const totalM3 = aData.reduce(
+          (sum, item) => sum + (parseFloat(item.M3) || 0),
+          0
+        );
+        const totalTot = aData.reduce(
+          (sum, item) => sum + (item.TOT || 0),
+          0
+        );
+        // Guardar en localStorage
+        localStorage.setItem("avanceCantidadRegistros", cantidadRegistros);
+        localStorage.setItem("avanceTotalKilo", totalKilo.toString());
+        localStorage.setItem("avanceTotalM3", totalM3.toString());
+        localStorage.setItem("avanceTotalTot", totalTot);
+
+
+
+      }
 
     });
   }
