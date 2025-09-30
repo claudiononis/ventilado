@@ -493,7 +493,7 @@ sap.ui.define(
                           console.log("Estado: ", estado);
                           BusyIndicator.hide(); // Ocultar
                           MessageToast.show(
-                            "Se conpleto la Desafectacion de material"
+                            "Se completo la desafectacion de material"
                           );
                         },
                         error: function (oError) {

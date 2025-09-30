@@ -3140,6 +3140,15 @@ if (registros.length > 1) {
           clearInterval(this.intervalId);
         }
 
+        const oClockModel = this.getOwnerComponent().getModel("clock");
+        oClockModel.setProperty("/isRunning", false);
+        localStorage.setItem(
+          "clockData",
+          JSON.stringify(oClockModel.getData())
+        );
+        clearInterval(this.getOwnerComponent()._clockInterval);
+        this.getView().getModel().setProperty("/isStarted", false);
+
         this.startTime = null;
         var oModel = this.getView().getModel();
         oModel.setProperty("/scanState", "Paused");
