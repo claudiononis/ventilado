@@ -469,8 +469,9 @@ sap.ui.define(
           } else if (ci.getText() != "" && oModel.getProperty("/isStarted")) {
             cod = ci.getText();
           }
+          var tipo = ctx.getView().byId("edtTipo").getText();
           //if (registro.CodigoInterno  === ci.getText()) {
-          if (registro.CodigoInterno === cod) {
+          if (registro.CodigoInterno === cod && tipo == registro.M3teo) {
             let ruta = registro.LugarPDisp;
             let cantidad = registro.CantidadEntrega;
             let sCantEscaneada = registro.CantEscaneada;
@@ -914,6 +915,7 @@ sap.ui.define(
         var descripcion = this.getView().byId("lDescripcion");
         var Ean = this.getView().byId("eanInput");
         var ci = this.getView().byId("edtCI");
+        var edtTipo = this.getView().byId("edtTipo");
         var oModel = this.getView().getModel();
         var parcialButton = this.getView().byId("parcialButton");
         var cantidadYRuta;
@@ -924,6 +926,8 @@ sap.ui.define(
             /** vemos si el EAN es un producto */
             cantidadYRuta = await this.obtenerCantidadYRuta(sValue, 1);
             if (cantidadYRuta.cantidad > 0) {
+              //////////
+  
               console.log("es un producto");
               // Actualiza el modelo
               oModel.setProperty("/ruta", cantidadYRuta.ruta);
@@ -935,6 +939,7 @@ sap.ui.define(
               oModel.setProperty("/Kgbrv", cantidadYRuta.Kgbrv);
               oModel.setProperty("/M3v", cantidadYRuta.M3v);
               // Actualiza la pantalla
+              edtTipo.setText(cantidadYRuta.M3teo);
               cantidad.setText(cantidadYRuta.cantidad);
               sRuta.setText(cantidadYRuta.ruta);
               descripcion.setText(cantidadYRuta.descripcion);
@@ -1034,6 +1039,97 @@ sap.ui.define(
             } else {
               cantidadYRuta = await this.obtenerCantidadYRuta(sValue, 2); // no es un producto( EAN) verifica si es un CI
               if (cantidadYRuta.cantidad > 0) {
+              // Buscar todas las combinaciones posibles en IndexedDB
+  var registros = await new Promise((resolve, reject) => {
+    var request = indexedDB.open("ventilado", 5);
+    request.onsuccess = function (event) {
+      var db = event.target.result;
+      var transaction = db.transaction(["ventilado"], "readonly");
+      var objectStore = transaction.objectStore("ventilado");
+      var index = objectStore.index("CodigoInterno");
+      var cursorRequest = index.openCursor(IDBKeyRange.only(sValue));
+      var resultados = [];
+      cursorRequest.onsuccess = function (event) {
+        var cursor = event.target.result;
+        if (cursor) {
+          resultados.push(cursor.value);
+          cursor.continue();
+        } else {
+         // Filtrar combinaciones únicas de CodigoInterno y M3teo
+          var unicos = [];
+          var combinaciones = new Set();
+          resultados.forEach(function(item) {
+            var clave = item.CodigoInterno + "_" + item.M3teo;
+            if (!combinaciones.has(clave)) {
+              combinaciones.add(clave);
+              unicos.push(item);
+            }
+          });
+          resolve(unicos);
+        }
+      };
+      cursorRequest.onerror = function (event) {
+        reject(event.target.error);
+      };
+    };
+    request.onerror = function (event) {
+      reject(event.target.error);
+    };
+  });
+if (registros.length > 1) {
+    
+    // Esperar a que el usuario elija una opción
+    var seleccion = await new Promise((resolve) => {
+      var oView = this.getView();
+      var oDialog = new sap.m.Dialog({
+        title: "Seleccione una combinación",
+        content: [
+          new sap.m.List({
+            items: registros.map(function (item) {
+              return new sap.m.StandardListItem({
+                title: "Presentacion: " + item.M3teo + " | EAN: " + item.Ean,
+                description: item.Descricion,
+                type: "Active",
+                press: function () {
+                  oDialog.close();
+                  resolve(item); // Resuelve la promesa con el item elegido
+                }
+              });
+            })
+          })
+        ],
+        endButton: new sap.m.Button({
+          text: "Cancelar",
+          press: function () {
+            oDialog.close();
+            resolve(null); // Resuelve la promesa con null si cancela
+          }
+        }),
+        afterClose: function () {
+          oDialog.destroy();
+        }
+      });
+      oView.addDependent(oDialog);
+      oDialog.open();
+    });
+
+    if (seleccion) {
+      
+      var mainInput = this.getView().byId("edtCI");
+      mainInput.setText(seleccion.CodigoInterno);
+      var eanInput = this.byId("eanInput");
+      var edtTipo = this.byId("edtTipo");  
+      edtTipo.setText(seleccion.M3teo);    
+      eanInput.setValue(seleccion.Ean);
+      this.handleEanEnter(seleccion.Ean);
+    } else {
+      // El usuario canceló
+      this.byId("dialogoCI").close();
+    }
+  
+  }
+
+               /////////
                 // Actualiza el modelo
                 console.log("es un ci");
                 oModel.setProperty("/ruta", cantidadYRuta.ruta);
@@ -1517,6 +1613,7 @@ sap.ui.define(
         try {
           var datos = await this.onGetData(eanInput, busqueda); // Realiza una sola lectura de la tabla
           return {
+
             cantidad: datos.Cantidad,
             ruta: datos.Ruta,
             descripcion: datos.descripcion,
@@ -1526,6 +1623,7 @@ sap.ui.define(
             AdicChar2: datos.AdicChar2,
             Kgbrv: datos.Kgbrv,
             M3v: datos.M3v,
+            M3teo: datos.tipo,
           }; // Devuelve un objeto con la cantidad y la ruta
         } catch (error) {
           // console.error("Error al obtener la cantidad y la ruta:", error);
@@ -1796,7 +1894,7 @@ sap.ui.define(
       },
 
       // Método para manejar la confirmación del valor ingresado en el diálogo del código interno
-      onCodeInputConfirm: async function () {
+      /* onCodeInputConfirm: async function () {
         var codeInput = this.byId("codeInput");
         var inputValue = codeInput.getValue();
 
@@ -1812,7 +1910,7 @@ sap.ui.define(
         eanInput.setValue(datos.ean); // Muestra valor de EAN recuperado
         // Llamar a la función handleEanEnter
         this.handleEanEnter(datos.ean);
-      },
+      }, */
 
       // Método para manejar el evento afterClose del diálogo
       onCodeInputDialogClose: function (oEvent) {
@@ -2581,6 +2679,7 @@ sap.ui.define(
                   return;
                 }
                 index = objectStore.index("Ean");
+                var cursorRequest = index.openCursor(IDBKeyRange.only(sKey));
               } else {
                 // Verificar si el índice "CodigoInterno" existe
                 if (!objectStore.indexNames.contains("CodigoInterno")) {
@@ -2635,6 +2734,7 @@ sap.ui.define(
                         AdicChar2: data.AdicChar2,
                         Kgbrv: data.Kgbrv,
                         M3v: data.M3v,
+                        tipo:data.M3teo,
                       };
                       flag = 2;
                       resolve(result);
@@ -3102,6 +3202,9 @@ sap.ui.define(
         var oRouter = sap.ui.core.UIComponent.getRouterFor(this);
         oRouter.navTo("Log");
       },
+
+
+      
     });
   }
 );

@@ -43,7 +43,7 @@ sap.ui.define(
           sessionStorage.getItem("fecha") ||
           new Date().toISOString().slice(0, 10);
 
-        // Obtener el router y añadir la función para el evento routeMatched
+        // Obtener el router y añadir la función para el evento routeMatched --
         var oRouter = UIComponent.getRouterFor(this);
         oRouter
           .getRoute("RouteView1")
@@ -241,7 +241,16 @@ sap.ui.define(
                 "Error desconocido,  revise conexion de Internet y VPN";
             }
             BusyIndicator.hide(); // Ocultar
-            MessageToast.show(sErrorMessage);
+             MessageBox.information(
+              sErrorMessage,
+              {
+                title: "Informacion",
+                actions: [MessageBox.Action.OK],
+                onClose: function () {
+                  // Aquí puedes agregar lógica adicional si lo necesitas
+                }
+              }
+            );//MessageToast.show(sErrorMessage);
           },
           timeout: 10000, // Establecer un tiempo de espera de 10 segundos
         });
@@ -418,6 +427,10 @@ sap.ui.define(
                     .getValue()
                     .padStart(10, "0");
 
+                    var sPtoPlanif = ctx
+                    .byId("pto_planif")
+                    .getValue().trim();
+
                   // Primero, buscar si ya existe el registro
                   var aFilters = [
                     new sap.ui.model.Filter(
@@ -483,6 +496,7 @@ sap.ui.define(
                           Iniciodesafectacion: sODataHoraFin,
                           Cantidadean: cantidadEansUnicos,
                           Campoadicional1: "TRADICIONAL",
+                          Campoadicional2: sPtoPlanif,
                         };
 
                         oModel.create("/ZVENTILADO_KPISet", oEntry, {
