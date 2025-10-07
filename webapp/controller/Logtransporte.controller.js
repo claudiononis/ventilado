@@ -31,82 +31,178 @@ sap.ui.define(
           oRouter.navTo("RouteView1"); // Puedes pasar parámetros si lo necesitas
         },
 
-
-
         onDownloadExcel: function () {
           const oTable = this.byId("kpiTableDesktop");
           const oBinding = oTable && oTable.getBinding("rows");
-          if (!oBinding) { return; }
+          if (!oBinding) {
+            return;
+          }
 
           // Carga dinámica para evitar "EdmType is not defined"
-          sap.ui.require([
-            "sap/ui/export/Spreadsheet",
-            "sap/ui/export/library"
-          ], (Spreadsheet, exportLibrary) => {
-            const EdmType = exportLibrary.EdmType;
+          sap.ui.require(
+            ["sap/ui/export/Spreadsheet", "sap/ui/export/library"],
+            (Spreadsheet, exportLibrary) => {
+              const EdmType = exportLibrary.EdmType;
 
-            const aContexts = oBinding.getContexts(0, Infinity);
-            const aRaw = aContexts.map(c => ({ ...c.getObject() }));
+              const aContexts = oBinding.getContexts(0, Infinity);
+              const aRaw = aContexts.map((c) => ({ ...c.getObject() }));
 
-            const toNumber = (v) => {
-              if (v === null || v === undefined || v === "") return null;
-              const s = String(v).trim().replace(/\./g, "").replace(",", ".");
-              const n = Number(s);
-              return Number.isFinite(n) ? n : null;
-            };
+              const toNumber = (v) => {
+                if (v === null || v === undefined || v === "") return null;
+                const s = String(v).trim().replace(/\./g, "").replace(",", ".");
+                const n = Number(s);
+                return Number.isFinite(n) ? n : null;
+              };
 
-            // normalización (según tus campos)
-            const aNum0 = ["Cantidaditem", "Cantidadean", "Cantidadentrega", "Cantidadcubeta", "Cantidadroll", "Cantidadpallet"];
-            const aNum2 = ["Kiloentrega", "Volumenentrega", "Duracionpreparacion", "Duracionneta", "Duracionfinal", "Tiempoproductivo", "Tiempopausa", "Tiempobruto"];
+              // normalización (según tus campos)
+              const aNum0 = [
+                "Cantidaditem",
+                "Cantidadean",
+                "Cantidadentrega",
+                "Cantidadcubeta",
+                "Cantidadroll",
+                "Cantidadpallet",
+              ];
+              const aNum2 = [
+                "Kiloentrega",
+                "Volumenentrega",
+                "Duracionpreparacion",
+                "Duracionneta",
+                "Duracionfinal",
+                "Tiempoproductivo",
+                "Tiempopausa",
+                "Tiempobruto",
+              ];
 
-            const fmtDate = (val) => {
-              if (!val) return "";
-              const d = new Date(val);
-              if (isNaN(d)) return "";
-              const p2 = x => String(x).padStart(2, "0");
-              return `${p2(d.getUTCDate())}-${p2(d.getUTCMonth() + 1)}-${String(d.getUTCFullYear()).slice(-2)}`;
-            };
+              const fmtDate = (val) => {
+                if (!val) return "";
+                const d = new Date(val);
+                if (isNaN(d)) return "";
+                const p2 = (x) => String(x).padStart(2, "0");
+                return `${p2(d.getUTCDate())}-${p2(
+                  d.getUTCMonth() + 1
+                )}-${String(d.getUTCFullYear()).slice(-2)}`;
+              };
 
-            const aData = aRaw.map(o => {
-              aNum0.forEach(k => o[k] = toNumber(o[k]));
-              aNum2.forEach(k => o[k] = toNumber(o[k]));
-              o.__Fecha = fmtDate(o.Fechainicio);
-              o.__Reparto = o.Transporte || "";
-              o.__Operador = o.Operador || "";
-              o.__Estacion = o.Estacion || "";
-              o.__Centro = o.Campoadicional2 || "";
-              return o;
-            });
+              const aData = aRaw.map((o) => {
+                aNum0.forEach((k) => (o[k] = toNumber(o[k])));
+                aNum2.forEach((k) => (o[k] = toNumber(o[k])));
+                o.__Fecha = fmtDate(o.Fechainicio);
+                o.__Reparto = o.Transporte || "";
+                o.__Operador = o.Operador || "";
+                o.__Estacion = o.Estacion || "";
+                o.__Centro = o.Campoadicional2 || "";
+                return o;
+              });
 
-            const aCols = [
-              { label: "Fecha", property: "__Fecha", type: EdmType.String },
-              { label: "Op", property: "__Operador", type: EdmType.String },
-              { label: "Estacion", property: "__Estacion", type: EdmType.String },
-              { label: "Reparto", property: "__Reparto", type: EdmType.String },
-              { label: "Centro", property: "__Centro", type: EdmType.String },
-              { label: "Kg Br", property: "Kiloentrega", type: EdmType.Number, scale: 2 },
-              { label: "Volumen (m3)", property: "Volumenentrega", type: EdmType.Number, scale: 3 },
-              { label: "Cant Unid.", property: "Cantidaditem", type: EdmType.Number, scale: 0 },
-              { label: "Cant EANS", property: "Cantidadean", type: EdmType.Number, scale: 0 },
-              { label: "Cant Clientes", property: "Cantidadentrega", type: EdmType.Number, scale: 0 },
-              { label: "Cant Cubetas", property: "Cantidadcubeta", type: EdmType.Number, scale: 0 },
-              { label: "Cant Roll", property: "Cantidadroll", type: EdmType.Number, scale: 0 },
-              { label: "Cant Pallets", property: "Cantidadpallet", type: EdmType.Number, scale: 0 },
-              { label: "T. Prep.", property: "Duracionpreparacion", type: EdmType.Number, scale: 2 },
-              { label: "T. Scan", property: "Duracionneta", type: EdmType.Number, scale: 2 },
-              { label: "T. Final", property: "Duracionfinal", type: EdmType.Number, scale: 2 },
-              { label: "T. Product.", property: "Tiempoproductivo", type: EdmType.Number, scale: 2 },
-              { label: "T. Pausa", property: "Tiempopausa", type: EdmType.Number, scale: 2 },
-              { label: "T. Total Bruto", property: "Tiempobruto", type: EdmType.Number, scale: 2 }
-            ];
+              const aCols = [
+                { label: "Fecha", property: "__Fecha", type: EdmType.String },
+                { label: "Op", property: "__Operador", type: EdmType.String },
+                {
+                  label: "Estacion",
+                  property: "__Estacion",
+                  type: EdmType.String,
+                },
+                {
+                  label: "Reparto",
+                  property: "__Reparto",
+                  type: EdmType.String,
+                },
+                { label: "Centro", property: "__Centro", type: EdmType.String },
+                {
+                  label: "Kg Br",
+                  property: "Kiloentrega",
+                  type: EdmType.Number,
+                  scale: 2,
+                },
+                {
+                  label: "Volumen (m3)",
+                  property: "Volumenentrega",
+                  type: EdmType.Number,
+                  scale: 3,
+                },
+                {
+                  label: "Cant Unid.",
+                  property: "Cantidaditem",
+                  type: EdmType.Number,
+                  scale: 0,
+                },
+                {
+                  label: "Cant EANS",
+                  property: "Cantidadean",
+                  type: EdmType.Number,
+                  scale: 0,
+                },
+                {
+                  label: "Cant Clientes",
+                  property: "Cantidadentrega",
+                  type: EdmType.Number,
+                  scale: 0,
+                },
+                {
+                  label: "Cant Cubetas",
+                  property: "Cantidadcubeta",
+                  type: EdmType.Number,
+                  scale: 0,
+                },
+                {
+                  label: "Cant Roll",
+                  property: "Cantidadroll",
+                  type: EdmType.Number,
+                  scale: 0,
+                },
+                {
+                  label: "Cant Pallets",
+                  property: "Cantidadpallet",
+                  type: EdmType.Number,
+                  scale: 0,
+                },
+                {
+                  label: "T. Prep.",
+                  property: "Duracionpreparacion",
+                  type: EdmType.Number,
+                  scale: 2,
+                },
+                {
+                  label: "T. Scan",
+                  property: "Duracionneta",
+                  type: EdmType.Number,
+                  scale: 2,
+                },
+                {
+                  label: "T. Final",
+                  property: "Duracionfinal",
+                  type: EdmType.Number,
+                  scale: 2,
+                },
+                {
+                  label: "T. Product.",
+                  property: "Tiempoproductivo",
+                  type: EdmType.Number,
+                  scale: 2,
+                },
+                {
+                  label: "T. Pausa",
+                  property: "Tiempopausa",
+                  type: EdmType.Number,
+                  scale: 2,
+                },
+                {
+                  label: "T. Total Bruto",
+                  property: "Tiempobruto",
+                  type: EdmType.Number,
+                  scale: 2,
+                },
+              ];
 
-            const oSheet = new Spreadsheet({
-              workbook: { columns: aCols },
-              dataSource: aData,
-              fileName: "LogTransporte.xlsx"
-            });
-            oSheet.build().finally(() => oSheet.destroy());
-          });
+              const oSheet = new Spreadsheet({
+                workbook: { columns: aCols },
+                dataSource: aData,
+                fileName: "LogTransporte.xlsx",
+              });
+              oSheet.build().finally(() => oSheet.destroy());
+            }
+          );
         },
 
         onSearch: function () {
@@ -175,7 +271,13 @@ sap.ui.define(
           // Centro (NUEVO)
           if (sCentro) {
             // Si querés prefijo en vez de exacto: usa StartsWith
-            aFilters.push(new sap.ui.model.Filter("Campoadicional2", sap.ui.model.FilterOperator.EQ, sCentro));
+            aFilters.push(
+              new sap.ui.model.Filter(
+                "Campoadicional2",
+                sap.ui.model.FilterOperator.EQ,
+                sCentro
+              )
+            );
           }
 
           // Tipo (siempre; el backend ya interpreta "Ambos")
