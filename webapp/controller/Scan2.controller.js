@@ -772,6 +772,70 @@ sap.ui.define(
           },
         });
 
+        var sTransporte = (function () {
+          var fullText = ctx.byId("transporte").getText();
+          var code = fullText.replace("Reparto: ", "").trim();
+          return code.padStart(10, "0");
+        })();
+        var sTipoLog = "START";
+        var now = new Date();
+        var sHoraActual = now.toTimeString().slice(0, 8); // "HH:MM:SS"
+        var sODataHoraActual =
+          "PT" +
+          sHoraActual.split(":")[0] +
+          "H" +
+          sHoraActual.split(":")[1] +
+          "M" +
+          sHoraActual.split(":")[2] +
+          "S";
+
+        function toODataTime(timeStr) {
+          var parts = timeStr.split(":");
+          return "PT" + parts[0] + "H" + parts[1] + "M" + parts[2] + "S";
+        }
+
+        var sODataFechaInicio = "/Date(" + now.getTime() + ")/";
+        var sHoraActual = now.toTimeString().slice(0, 8); // "HH:MM:SS"
+        var sODataHoraInicio = toODataTime(sHoraActual);
+        var centroValue = localStorage.getItem("depositoCod") || "";
+        var preparadorValue = localStorage.getItem("sPreparador") || "";
+        var entregaValue = localStorage.getItem("sPtoPlanif") || "";
+
+        var oEntry = {
+          Id: 0,
+          EventoNro: 0,
+          ScanNro: 0,
+          Ean: "",
+          CodigoInterno: "",
+          Descripcion: "",
+          Ruta: "",
+          TipoLog: sTipoLog,
+          Hora: sODataHoraInicio,
+          Fecha: sODataFechaInicio,
+          Entrega: "",
+          Centro: entregaValue,
+          Preparador: preparadorValue,
+          Cliente: "",
+          Estacion: (function () {
+            var fullText = ctx.byId("puestoScan").getText();
+            var code = fullText.replace("Estacion de trabajo Nro: ", "").trim();
+            return code;
+          })(),
+          Transporte: sTransporte,
+          CantAsignada: 0,
+          ConfirmadoEnRuta: "",
+        };
+
+        oModel.create("/zlog_ventiladoSet", oEntry, {
+          success: function (data) {
+            // Actualizar cronómetro después del create exitoso
+            ctx._validarYActualizarCronometro();
+          },
+          error: function (err) {
+            MessageBox.error("Error al crear el evento.");
+          },
+        });
+
         if (completo == 0) {
           ctx.getView().byId("eanInput").setVisible(false);
         }
@@ -927,7 +991,7 @@ sap.ui.define(
             cantidadYRuta = await this.obtenerCantidadYRuta(sValue, 1);
             if (cantidadYRuta.cantidad > 0) {
               //////////
-  
+
               console.log("es un producto");
               // Actualiza el modelo
               oModel.setProperty("/ruta", cantidadYRuta.ruta);
@@ -1039,97 +1103,100 @@ sap.ui.define(
             } else {
               cantidadYRuta = await this.obtenerCantidadYRuta(sValue, 2); // no es un producto( EAN) verifica si es un CI
               if (cantidadYRuta.cantidad > 0) {
-              // Buscar todas las combinaciones posibles en IndexedDB
-  var registros = await new Promise((resolve, reject) => {
-    var request = indexedDB.open("ventilado", 5);
-    request.onsuccess = function (event) {
-      var db = event.target.result;
-      var transaction = db.transaction(["ventilado"], "readonly");
-      var objectStore = transaction.objectStore("ventilado");
-      var index = objectStore.index("CodigoInterno");
-      var cursorRequest = index.openCursor(IDBKeyRange.only(sValue));
-      var resultados = [];
-      cursorRequest.onsuccess = function (event) {
-        var cursor = event.target.result;
-        if (cursor) {
-          resultados.push(cursor.value);
-          cursor.continue();
-        } else {
-         // Filtrar combinaciones únicas de CodigoInterno y M3teo
-          var unicos = [];
-          var combinaciones = new Set();
-          resultados.forEach(function(item) {
-            var clave = item.CodigoInterno + "_" + item.M3teo;
-            if (!combinaciones.has(clave)) {
-              combinaciones.add(clave);
-              unicos.push(item);
-            }
-          });
-          resolve(unicos);
-        }
-      };
-      cursorRequest.onerror = function (event) {
-        reject(event.target.error);
-      };
-    };
-    request.onerror = function (event) {
-      reject(event.target.error);
-    };
-  });
-if (registros.length > 1) {
-    
-    // Esperar a que el usuario elija una opción
-    var seleccion = await new Promise((resolve) => {
-      var oView = this.getView();
-      var oDialog = new sap.m.Dialog({
-        title: "Seleccione una combinación",
-        content: [
-          new sap.m.List({
-            items: registros.map(function (item) {
-              return new sap.m.StandardListItem({
-                title: "Presentacion: " + item.M3teo + " | EAN: " + item.Ean,
-                description: item.Descricion,
-                type: "Active",
-                press: function () {
-                  oDialog.close();
-                  resolve(item); // Resuelve la promesa con el item elegido
+                // Buscar todas las combinaciones posibles en IndexedDB
+                var registros = await new Promise((resolve, reject) => {
+                  var request = indexedDB.open("ventilado", 5);
+                  request.onsuccess = function (event) {
+                    var db = event.target.result;
+                    var transaction = db.transaction(["ventilado"], "readonly");
+                    var objectStore = transaction.objectStore("ventilado");
+                    var index = objectStore.index("CodigoInterno");
+                    var cursorRequest = index.openCursor(
+                      IDBKeyRange.only(sValue)
+                    );
+                    var resultados = [];
+                    cursorRequest.onsuccess = function (event) {
+                      var cursor = event.target.result;
+                      if (cursor) {
+                        resultados.push(cursor.value);
+                        cursor.continue();
+                      } else {
+                        // Filtrar combinaciones únicas de CodigoInterno y M3teo
+                        var unicos = [];
+                        var combinaciones = new Set();
+                        resultados.forEach(function (item) {
+                          var clave = item.CodigoInterno + "_" + item.M3teo;
+                          if (!combinaciones.has(clave)) {
+                            combinaciones.add(clave);
+                            unicos.push(item);
+                          }
+                        });
+                        resolve(unicos);
+                      }
+                    };
+                    cursorRequest.onerror = function (event) {
+                      reject(event.target.error);
+                    };
+                  };
+                  request.onerror = function (event) {
+                    reject(event.target.error);
+                  };
+                });
+                if (registros.length > 1) {
+                  // Esperar a que el usuario elija una opción
+                  var seleccion = await new Promise((resolve) => {
+                    var oView = this.getView();
+                    var oDialog = new sap.m.Dialog({
+                      title: "Seleccione una combinación",
+                      content: [
+                        new sap.m.List({
+                          items: registros.map(function (item) {
+                            return new sap.m.StandardListItem({
+                              title:
+                                "Presentacion: " +
+                                item.M3teo +
+                                " | EAN: " +
+                                item.Ean,
+                              description: item.Descricion,
+                              type: "Active",
+                              press: function () {
+                                oDialog.close();
+                                resolve(item); // Resuelve la promesa con el item elegido
+                              },
+                            });
+                          }),
+                        }),
+                      ],
+                      endButton: new sap.m.Button({
+                        text: "Cancelar",
+                        press: function () {
+                          oDialog.close();
+                          resolve(null); // Resuelve la promesa con null si cancela
+                        },
+                      }),
+                      afterClose: function () {
+                        oDialog.destroy();
+                      },
+                    });
+                    oView.addDependent(oDialog);
+                    oDialog.open();
+                  });
+
+                  if (seleccion) {
+                    var mainInput = this.getView().byId("edtCI");
+                    mainInput.setText(seleccion.CodigoInterno);
+                    var eanInput = this.byId("eanInput");
+                    var edtTipo = this.byId("edtTipo");
+                    edtTipo.setText(seleccion.M3teo);
+                    eanInput.setValue(seleccion.Ean);
+                    this.handleEanEnter(seleccion.Ean);
+                  } else {
+                    // El usuario canceló
+                    this.byId("dialogoCI").close();
+                  }
                 }
-              });
-            })
-          })
-        ],
-        endButton: new sap.m.Button({
-          text: "Cancelar",
-          press: function () {
-            oDialog.close();
-            resolve(null); // Resuelve la promesa con null si cancela
-          }
-        }),
-        afterClose: function () {
-          oDialog.destroy();
-        }
-      });
-      oView.addDependent(oDialog);
-      oDialog.open();
-    });
 
-    if (seleccion) {
-      
-      var mainInput = this.getView().byId("edtCI");
-      mainInput.setText(seleccion.CodigoInterno);
-      var eanInput = this.byId("eanInput");
-      var edtTipo = this.byId("edtTipo");  
-      edtTipo.setText(seleccion.M3teo);    
-      eanInput.setValue(seleccion.Ean);
-      this.handleEanEnter(seleccion.Ean);
-    } else {
-      // El usuario canceló
-      this.byId("dialogoCI").close();
-    }
-  
-  }
-
-               /////////
+                /////////
                 // Actualiza el modelo
                 console.log("es un ci");
                 oModel.setProperty("/ruta", cantidadYRuta.ruta);
@@ -1556,6 +1623,112 @@ if (registros.length > 1) {
                   kgbrr,
                   M3r
                 );
+
+                //////////////////////////////
+                ////////////////////////
+                function parsearFechaHora(adicDec2Str) {
+                  // Espera formato "dd/mm/aaaa hh:mm:ss"
+                  if (!adicDec2Str || typeof adicDec2Str !== "string") {
+                    throw new Error("Formato inválido en AdicDec2");
+                  }
+
+                  const [sFecha, sHora] = adicDec2Str.trim().split(" ");
+                  if (!sFecha || !sHora) throw new Error("Falta fecha u hora");
+
+                  const [dd, mm, yyyy] = sFecha.split("/");
+                  const [HH, MM, SS] = sHora.split(":");
+                  if (!dd || !mm || !yyyy || !HH || !MM || !SS) {
+                    throw new Error("Fecha u hora con formato incorrecto");
+                  }
+
+                  // ---- Para DATS/TIMS (ABAP) ----
+                  const fechaDATS = `${yyyy}${mm}${dd}`; // "YYYYMMDD"
+                  const horaTIMS = `${HH}${MM}${SS}`; // "HHMMSS"
+
+                  // ---- Para OData V2 estándar ----
+                  // Fecha como Date JS (00:00:00 local)
+                  const fechaEdmDateTime = new Date(
+                    Number(yyyy),
+                    Number(mm) - 1,
+                    Number(dd),
+                    0,
+                    0,
+                    0,
+                    0
+                  );
+
+                  // Hora como duración Edm.Time "PT#H#M#S"
+                  const horaEdmTime = `PT${Number(HH)}H${Number(MM)}M${Number(
+                    SS
+                  )}S`;
+
+                  return {
+                    fechaDATS,
+                    horaTIMS,
+                    fechaEdmDateTime,
+                    horaEdmTime,
+                  };
+                }
+                const { fechaDATS, horaTIMS, fechaEdmDateTime, horaEdmTime } =
+                  parsearFechaHora(data.AdicDec2);
+
+                // O si tus valores ya están en IndexedDB, preferí los de la DB:
+                const Ean = data.Ean;
+                const CodigoInterno = data.CodigoInterno;
+                const Descripcion = data.Descricion;
+                const Ruta = data.LugarPDisp;
+                const TipoLog = "SCAN";
+                const Fecha = fechaEdmDateTime; // Edm.DateTime (sap:display-format="Date")
+                const Hora = horaEdmTime; // Edm.Time -> "PT12H45M30S"
+                const Preparador = data.Preparador;
+                const Cliente = data.Destinatario;
+                const Entrega = data.Entrega;
+                const Estacion = data.AdicDec1;
+                const Centro = sPtoPlanif;
+                const Transporte = data.Transporte;
+                const CantAsignada = Number(data.CantidadEntrega || 0);
+                const ConfirmadoEnRuta = data.LugarPDisp;
+                const Display = data.display;
+
+                // Array con un único registro
+                var createData = {
+                  Ean: Ean,
+                  CodigoInterno: CodigoInterno,
+                  Descripcion: Descripcion,
+                  Ruta: Ruta,
+                  TipoLog: TipoLog,
+                  Fecha: Fecha,
+                  Hora: Hora,
+                  Preparador: Preparador,
+                  Cliente: Cliente,
+                  Entrega: Entrega,
+                  Estacion: Estacion,
+                  Centro: Centro,
+                  Transporte: Transporte,
+                  CantAsignada: CantAsignada,
+                  ConfirmadoEnRuta: ConfirmadoEnRuta,
+                  Display: Display,
+                };
+                var oModel = new sap.ui.model.odata.v2.ODataModel(
+                  "/sap/opu/odata/sap/ZVENTILADO_SRV/",
+                  {
+                    useBatch: false,
+                    defaultBindingMode: "TwoWay",
+                  }
+                );
+                oModel.create("/zlog_ventiladoSet", createData, {
+                  success: function (data) {
+                    // Actualizar cronómetro después del create exitoso de SCAN
+                    ctx._validarYActualizarCronometro();
+                  },
+                  error: function (err) {
+                    MessageBox.error("Error al crear el evento.");
+                  },
+                });
+
+                ////////////////////////
+
+                ///////////////////////////////
               };
               verifyRequest.onerror = function (event) {
                 // si hay un error al guardar el dato , voy x aca
@@ -1613,7 +1786,6 @@ if (registros.length > 1) {
         try {
           var datos = await this.onGetData(eanInput, busqueda); // Realiza una sola lectura de la tabla
           return {
-
             cantidad: datos.Cantidad,
             ruta: datos.Ruta,
             descripcion: datos.descripcion,
@@ -1675,89 +1847,60 @@ if (registros.length > 1) {
             sReparto
           ),
         ];
-        oModel.read("/ZVENTILADO_KPISet", {
-          filters: aFilters,
-          success: function (oData) {
-            if (oData.results && oData.results.length > 0) {
-              // Hay al menos un registro, actualizamos Inicioescaneo
-              var registro = oData.results[0];
-              var now = new Date();
+        // Crear registro en zlog_ventiladoSet para cierre
+        var now = new Date();
+        var sHoraActual = now.toTimeString().slice(0, 8); // "HH:MM:SS"
+        var sODataHoraActual =
+          "PT" +
+          sHoraActual.split(":")[0] +
+          "H" +
+          sHoraActual.split(":")[1] +
+          "M" +
+          sHoraActual.split(":")[2] +
+          "S";
+        var sODataFechafin = "/Date(" + now.getTime() + ")/";
 
-              // Formatear la hora actual como "HH:MM:SS"
-              var sHoraActual = now.toTimeString().slice(0, 8);
-              var sODataHoraActual =
-                "PT" +
-                sHoraActual.split(":")[0] +
-                "H" +
-                sHoraActual.split(":")[1] +
-                "M" +
-                sHoraActual.split(":")[2] +
-                "S";
+        var sTransporte = (function () {
+          var fullText = ctx2.byId("transporte").getText();
+          var code = fullText.replace("Reparto: ", "").trim();
+          return code.padStart(10, "0");
+        })();
 
-              // Función para convertir OData duration a milisegundos
-              function parseODataDurationToMilliseconds(durationStr) {
-                if (typeof durationStr !== "string") return 0;
-                const match = durationStr.match(/PT(\d+)H(\d+)M(\d+)S/);
-                if (!match) return 0;
-                const [, h, m, s] = match.map(Number);
-                return ((h * 60 + m) * 60 + s) * 1000;
-              }
+        var centroValue = localStorage.getItem("depositoCod") || "";
+        var preparadorValue = localStorage.getItem("sPreparador") || "";
+        var entregaValue = localStorage.getItem("sPtoPlanif") || "";
 
-              //Calcular tiempo de pausa
-              var tiempobruto = Math.floor(
-                (parseODataDurationToMilliseconds(sODataHoraActual) -
-                  registro.Horainicio.ms) /
-                  60000
-              );
-
-              // Calcular tiempo final
-              var sDuracionfinal = Math.floor(
-                (parseODataDurationToMilliseconds(sODataHoraActual) -
-                  registro.Iniciodesafectacion.ms) /
-                  60000
-              );
-
-              //Tiempo productivo
-              var tiempoproductivo =
-                registro.Duracionpreparacion +
-                registro.Duracionneta +
-                sDuracionfinal;
-
-              //Tiempo de pausa
-              var tiempoPausa = tiempobruto - tiempoproductivo;
-
-              var sODataFechafin = "/Date(" + now.getTime() + ")/";
-
-              // Objeto para la actualización
-              var oUpdate = [
-                {
-                  Id: registro.Id,
-                  Fechafin: sODataFechafin,
-                  Horafin: sODataHoraActual,
-                  Duracionfinal: sDuracionfinal,
-                  Tiempobruto: Math.floor(
-                    (parseODataDurationToMilliseconds(sODataHoraActual) -
-                      registro.Horainicio.ms) /
-                      60000
-                  ),
-                  Tiempoproductivo: tiempoproductivo,
-                  Tiempopausa: tiempoPausa,
-                },
-              ];
-
-              if (registro.Horafin.ms == "0") {
-                ctx2.crud(
-                  "ACTUALIZAR",
-                  "ZVENTILADO_KPI",
-                  registro.Id,
-                  oUpdate,
-                  ""
-                );
-              }
-            }
+        var oEntry = {
+          Id: 0,
+          EventoNro: 0,
+          ScanNro: 0,
+          Ean: "",
+          CodigoInterno: "",
+          Descripcion: "",
+          Ruta: "",
+          TipoLog: "IMPRESION",
+          Entrega: "",
+          Centro: entregaValue,
+          Preparador: preparadorValue,
+          Hora: sODataHoraActual,
+          Fecha: sODataFechafin,
+          Cliente: "",
+          Estacion: (function () {
+            var fullText = ctx2.byId("puestoScan").getText();
+            var code = fullText.replace("Estacion de trabajo Nro: ", "").trim();
+            return code;
+          })(),
+          Transporte: sTransporte,
+          CantAsignada: 0,
+          ConfirmadoEnRuta: "",
+        };
+        oModel.create("/zlog_ventiladoSet", oEntry, {
+          success: function (data) {
+            // Actualizar cronómetro después del create exitoso de IMPRESION
+            ctx2._validarYActualizarCronometro();
           },
-          error: function (oError) {
-            // No mostrar mensajes
+          error: function (err) {
+            MessageBox.error("Error al crear el evento de cierre.");
           },
         });
 
@@ -2734,7 +2877,7 @@ if (registros.length > 1) {
                         AdicChar2: data.AdicChar2,
                         Kgbrv: data.Kgbrv,
                         M3v: data.M3v,
-                        tipo:data.M3teo,
+                        tipo: data.M3teo,
                       };
                       flag = 2;
                       resolve(result);
@@ -3067,7 +3210,7 @@ if (registros.length > 1) {
         this.closeAllDbConnections();
         localStorage.setItem("elapsedTime", this.elapsedTime.toString());
         localStorage.setItem("elapsedTime", this.elapsedTime.toString());
-        this.onPause();
+        /*         this.onPause(); */
       },
       getFormattedDateTime: function () {
         var oDate = new Date();
@@ -3141,6 +3284,24 @@ if (registros.length > 1) {
         }
 
         const oClockModel = this.getOwnerComponent().getModel("clock");
+        var elapsedSeconds = oClockModel.getProperty("/elapsedSeconds") || 0;
+        // Convertir segundos a formato HH:MM:SS
+        var hours = Math.floor(elapsedSeconds / 3600)
+          .toString()
+          .padStart(2, "0");
+        var minutes = Math.floor((elapsedSeconds % 3600) / 60)
+          .toString()
+          .padStart(2, "0");
+        var seconds = Math.floor(elapsedSeconds % 60)
+          .toString()
+          .padStart(2, "0");
+        var relojStr = hours + ":" + minutes + ":" + seconds;
+        // Formatear igual que sODataHoraInicio
+        function toODataTime(timeStr) {
+          var parts = timeStr.split(":");
+          return "PT" + parts[0] + "H" + parts[1] + "M" + parts[2] + "S";
+        }
+        var sReloj = toODataTime(relojStr);
         oClockModel.setProperty("/isRunning", false);
         localStorage.setItem(
           "clockData",
@@ -3149,11 +3310,63 @@ if (registros.length > 1) {
         clearInterval(this.getOwnerComponent()._clockInterval);
         this.getView().getModel().setProperty("/isStarted", false);
 
-        this.startTime = null;
-        var oModel = this.getView().getModel();
-        oModel.setProperty("/scanState", "Paused");
-        oModel.setProperty("/stateClass", this._getStateClass("Paused"));
-        oModel.setProperty("/isStarted", false);
+        // Crear log de pausa en zlog_ventiladoSet
+        var ctx = this;
+        var oModel = new sap.ui.model.odata.v2.ODataModel(
+          "/sap/opu/odata/sap/ZVENTILADO_SRV/",
+          {
+            useBatch: false,
+            defaultBindingMode: "TwoWay",
+          }
+        );
+        var sTransporte = (function () {
+          var fullText = ctx.byId("transporte").getText();
+          var code = fullText.replace("Reparto: ", "").trim();
+          return code.padStart(10, "0");
+        })();
+        var sTipoLog = "PAUSE";
+        var now = new Date();
+        var sHoraActual = now.toTimeString().slice(0, 8); // "HH:MM:SS"
+        var sODataFechaInicio = "/Date(" + now.getTime() + ")/";
+        var sODataHoraInicio = toODataTime(sHoraActual);
+        var centroValue = localStorage.getItem("depositoCod") || "";
+        var preparadorValue = localStorage.getItem("sPreparador") || "";
+        var entregaValue = localStorage.getItem("sPtoPlanif") || "";
+
+        var oEntry = {
+          Id: 0,
+          EventoNro: 0,
+          ScanNro: 0,
+          Ean: "",
+          CodigoInterno: "",
+          Descripcion: "",
+          Ruta: "",
+          TipoLog: sTipoLog,
+          Reloj: sReloj,
+          Hora: sODataHoraInicio,
+          Entrega: "",
+          Centro: entregaValue,
+          Preparador: preparadorValue,
+          Fecha: sODataFechaInicio,
+          Cliente: "",
+          Estacion: (function () {
+            var fullText = ctx.byId("puestoScan").getText();
+            var code = fullText.replace("Estacion de trabajo Nro: ", "").trim();
+            return code;
+          })(),
+          Transporte: sTransporte,
+          CantAsignada: 0,
+          ConfirmadoEnRuta: "",
+        };
+        oModel.create("/zlog_ventiladoSet", oEntry, {
+          success: function (data) {
+            // Actualizar cronómetro después del create exitoso de PAUSE
+            ctx._validarYActualizarCronometro();
+          },
+          error: function (err) {
+            sap.m.MessageBox.error("Error al crear el evento de pausa.");
+          },
+        });
       },
 
       onStop: function () {
@@ -3186,34 +3399,124 @@ if (registros.length > 1) {
       },
       /* Navegacion   */
       onNavToInicio: function () {
-        this.onPause();
+        /*         this.onPause(); */
         var oRouter = sap.ui.core.UIComponent.getRouterFor(this);
         oRouter.navTo("RouteView1");
       },
       onNavToAvanceRuta: function () {
-        this.onPause();
+        /*         this.onPause(); */
         var oRouter = sap.ui.core.UIComponent.getRouterFor(this);
         oRouter.navTo("Avance2");
       },
       onNavToAvanceCodigo: function () {
-        this.onPause();
+        /*         this.onPause(); */
         var oRouter = sap.ui.core.UIComponent.getRouterFor(this);
         oRouter.navTo("Avanceporci");
       },
       onDesafectacion: function () {
-        this.onPause();
+        /*         this.onPause(); */
         var oRouter = sap.ui.core.UIComponent.getRouterFor(this);
         oRouter.navTo("Desconsolidado"); //
       },
 
       onNavToLog: function () {
-        this.onPause();
+        /*         this.onPause(); */
         var oRouter = sap.ui.core.UIComponent.getRouterFor(this);
         oRouter.navTo("Log");
       },
+      _validarYActualizarCronometro: function () {
+        // Obtener horainicio del localStorage
+        var sHoraInicioOData = localStorage.getItem("HoraInicio");
 
+        if (!sHoraInicioOData) {
+          return; // No hay valor guardado, no hacer nada
+        }
 
-      
+        // Función para convertir formato OData "PTxxHxxMxxS" a segundos
+        function fromODataTimeToSeconds(oDataTime) {
+          if (!oDataTime) return 0;
+
+          var match = oDataTime.match(/PT(\d+)H(\d+)M(\d+)S/);
+          if (!match) return 0;
+
+          var hours = parseInt(match[1], 10);
+          var minutes = parseInt(match[2], 10);
+          var seconds = parseInt(match[3], 10);
+
+          return hours * 3600 + minutes * 60 + seconds;
+        }
+
+        var horaInicioEnSegundos = fromODataTimeToSeconds(sHoraInicioOData);
+
+        if (horaInicioEnSegundos > 0) {
+          // Calcular tiempo transcurrido desde la hora de inicio
+          var now = new Date();
+          var horaActualEnSegundos =
+            now.getHours() * 3600 + now.getMinutes() * 60 + now.getSeconds();
+
+          // Calcular la diferencia: hora actual - hora inicio
+          var diferenciaEnSegundos =
+            horaActualEnSegundos - horaInicioEnSegundos;
+
+          // Si la diferencia es negativa, significa que cruzamos la medianoche
+          if (diferenciaEnSegundos < 0) {
+            diferenciaEnSegundos += 24 * 3600; // Agregar 24 horas
+          }
+
+          // Convertir a formato HH:MM:SS
+          var hours = Math.floor(diferenciaEnSegundos / 3600);
+          var minutes = Math.floor((diferenciaEnSegundos % 3600) / 60);
+          var seconds = diferenciaEnSegundos % 60;
+
+          var formattedTime =
+            String(hours).padStart(2, "0") +
+            ":" +
+            String(minutes).padStart(2, "0") +
+            ":" +
+            String(seconds).padStart(2, "0");
+
+          // Actualizar el cronómetro y DETENERLO completamente
+          var oClockModel = this.getOwnerComponent().getModel("clock");
+
+          // Detener TODOS los timers posibles del cronómetro
+          var oComponent = this.getOwnerComponent();
+
+          // Intentar múltiples formas de detener el timer - INCLUIR _clockInterval que es el que realmente usa Component.js
+          if (oComponent._clockInterval) {
+            clearInterval(oComponent._clockInterval);
+            oComponent._clockInterval = null;
+          }
+
+          if (oComponent._clockTimer) {
+            clearInterval(oComponent._clockTimer);
+            oComponent._clockTimer = null;
+          }
+
+          if (oComponent.clockTimer) {
+            clearInterval(oComponent.clockTimer);
+            oComponent.clockTimer = null;
+          }
+
+          if (oComponent._timerInterval) {
+            clearInterval(oComponent._timerInterval);
+            oComponent._timerInterval = null;
+          }
+
+          // Forzar isRunning a false en el modelo
+          oClockModel.setProperty("/time", formattedTime);
+          oClockModel.setProperty("/elapsedSeconds", diferenciaEnSegundos);
+          oClockModel.setProperty("/isRunning", false); // Siempre detenido
+
+          // Forzar el refresh del modelo
+          oClockModel.refresh();
+
+          // Guardar en localStorage
+          localStorage.setItem(
+            "clockData",
+            JSON.stringify(oClockModel.getData())
+          );
+        }
+      },
     });
   }
 );

@@ -205,6 +205,150 @@ sap.ui.define(
           );
         },
 
+        onDownloadExcelCrudo: function () {
+          var oTable = this.byId("kpiTableDesktop");
+          var oBinding = oTable && oTable.getBinding("rows");
+          if (!oBinding) {
+            return;
+          }
+
+          // Obtener todos los repartos visibles
+          var aContexts = oBinding.getContexts(0, Infinity);
+          var aRepartos = Array.from(
+            new Set(
+              aContexts
+                .map(function (ctx) {
+                  var reparto = ctx.getObject().Transporte;
+                  return reparto ? reparto.padStart(10, "0") : null;
+                })
+                .filter(Boolean)
+            )
+          );
+
+          if (aRepartos.length === 0) {
+            sap.m.MessageToast.show("No hay repartos visibles para descargar.");
+            return;
+          }
+
+          var oODataModel = new sap.ui.model.odata.v2.ODataModel(
+            "/sap/opu/odata/sap/ZVENTILADO_SRV/"
+          );
+          var aFilters = [
+            new sap.ui.model.Filter({
+              path: "Transporte",
+              operator: sap.ui.model.FilterOperator.EQ,
+              value1: aRepartos[0],
+            }),
+          ];
+          if (aRepartos.length > 1) {
+            for (var i = 1; i < aRepartos.length; i++) {
+              aFilters.push(
+                new sap.ui.model.Filter({
+                  path: "Transporte",
+                  operator: sap.ui.model.FilterOperator.EQ,
+                  value1: aRepartos[i],
+                })
+              );
+            }
+            aFilters = [
+              new sap.ui.model.Filter({
+                filters: aFilters,
+                and: false,
+              }),
+            ];
+          }
+
+          var that = this;
+          oODataModel.read("/zlog_ventiladoSet", {
+            filters: aFilters,
+            success: function (oData) {
+              if (!oData.results || oData.results.length === 0) {
+                sap.m.MessageToast.show(
+                  "No se encontraron registros en zlog_ventilado."
+                );
+                return;
+              }
+              // Ordenar por Transporte y EventoNro
+              var aSorted = oData.results.slice().sort(function (a, b) {
+                if (a.Transporte < b.Transporte) return -1;
+                if (a.Transporte > b.Transporte) return 1;
+                // Si Transporte es igual, ordenar por EventoNro
+                return (a.EventoNro || 0) - (b.EventoNro || 0);
+              });
+              // Formatear campo Hora (objeto con ms en milisegundos) como HH:MM:SS
+              aSorted.forEach(function (item) {
+                if (
+                  item.Hora &&
+                  typeof item.Hora === "object" &&
+                  typeof item.Hora.ms === "number"
+                ) {
+                  var totalSeconds = Math.floor(item.Hora.ms / 1000);
+                  var h = Math.floor(totalSeconds / 3600);
+                  var m = Math.floor((totalSeconds % 3600) / 60);
+                  var s = totalSeconds % 60;
+                  item.Hora =
+                    String(h).padStart(2, "0") +
+                    ":" +
+                    String(m).padStart(2, "0") +
+                    ":" +
+                    String(s).padStart(2, "0");
+                } else if (!item.Hora) {
+                  item.Hora = "";
+                }
+              });
+              // Reemplazar Fechainicio por formato DD/MM/AAAA
+              aSorted.forEach(function (item) {
+                if (item.Fecha) {
+                  var d = new Date(item.Fecha);
+                  if (!isNaN(d)) {
+                    var p2 = function (x) {
+                      return String(x).padStart(2, "0");
+                    };
+                    item.Fecha =
+                      p2(d.getDate()) +
+                      "/" +
+                      p2(d.getMonth() + 1) +
+                      "/" +
+                      d.getFullYear();
+                  } else {
+                    item.Fecha = "";
+                  }
+                } else {
+                  item.Fecha = "";
+                }
+              });
+              sap.ui.require(
+                ["sap/ui/export/Spreadsheet", "sap/ui/export/library"],
+                function (Spreadsheet, exportLibrary) {
+                  var EdmType = exportLibrary.EdmType;
+                  var aCols = Object.keys(oData.results[0] || {}).map(function (
+                    key
+                  ) {
+                    return { label: key, property: key, type: EdmType.String };
+                  });
+                  // No agregar columna extra, solo exportar Fechainicio ya formateado
+                  // aCols.unshift({
+                  //   label: "Fecha",
+                  //   property: "__Fecha",
+                  //   type: EdmType.String,
+                  // });
+                  var oSheet = new Spreadsheet({
+                    workbook: { columns: aCols },
+                    dataSource: aSorted,
+                    fileName: "zlog_ventilado_crudo.xlsx",
+                  });
+                  oSheet.build().finally(function () {
+                    oSheet.destroy();
+                  });
+                }
+              );
+            },
+            error: function () {
+              sap.m.MessageToast.show("Error al leer datos de zlog_ventilado.");
+            },
+          });
+        },
+
         onSearch: function () {
           var oView = this.getView();
           // Usá el model del componente si ya está configurado en manifest
@@ -302,6 +446,41 @@ sap.ui.define(
               sap.m.MessageToast.show("Error al leer datos");
             },
           });
+        },
+        onDownloadExcel: function () {
+          var aData = this.getView().getModel().getProperty("/tableData") || [];
+          if (!aData.length) {
+            sap.m.MessageToast.show("No hay datos para exportar");
+            return;
+          }
+          var exportExcel = function () {
+            var aCols = Object.keys(aData[0]);
+            var aRows = aData.map(function (row) {
+              return aCols.map(function (col) {
+                return row[col];
+              });
+            });
+            var ws = XLSX.utils.aoa_to_sheet([aCols].concat(aRows));
+            var wb = XLSX.utils.book_new();
+            XLSX.utils.book_append_sheet(wb, ws, "LogTransporte");
+            XLSX.writeFile(wb, "LogTransporte.xlsx");
+          };
+          if (typeof XLSX === "undefined") {
+            var sUrl =
+              "https://cdn.sheetjs.com/xlsx-latest/package/dist/xlsx.full.min.js";
+            var oScript = document.createElement("script");
+            oScript.type = "text/javascript";
+            oScript.src = sUrl;
+            oScript.onload = function () {
+              exportExcel();
+            };
+            oScript.onerror = function () {
+              sap.m.MessageToast.show("No se pudo cargar la librería XLSX");
+            };
+            document.head.appendChild(oScript);
+          } else {
+            exportExcel();
+          }
         },
       }
     );
