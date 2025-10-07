@@ -447,41 +447,6 @@ sap.ui.define(
             },
           });
         },
-        onDownloadExcel: function () {
-          var aData = this.getView().getModel().getProperty("/tableData") || [];
-          if (!aData.length) {
-            sap.m.MessageToast.show("No hay datos para exportar");
-            return;
-          }
-          var exportExcel = function () {
-            var aCols = Object.keys(aData[0]);
-            var aRows = aData.map(function (row) {
-              return aCols.map(function (col) {
-                return row[col];
-              });
-            });
-            var ws = XLSX.utils.aoa_to_sheet([aCols].concat(aRows));
-            var wb = XLSX.utils.book_new();
-            XLSX.utils.book_append_sheet(wb, ws, "LogTransporte");
-            XLSX.writeFile(wb, "LogTransporte.xlsx");
-          };
-          if (typeof XLSX === "undefined") {
-            var sUrl =
-              "https://cdn.sheetjs.com/xlsx-latest/package/dist/xlsx.full.min.js";
-            var oScript = document.createElement("script");
-            oScript.type = "text/javascript";
-            oScript.src = sUrl;
-            oScript.onload = function () {
-              exportExcel();
-            };
-            oScript.onerror = function () {
-              sap.m.MessageToast.show("No se pudo cargar la librería XLSX");
-            };
-            document.head.appendChild(oScript);
-          } else {
-            exportExcel();
-          }
-        },
       }
     );
   }
