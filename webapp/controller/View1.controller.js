@@ -396,14 +396,6 @@ sap.ui.define(
                   );
                   const cantidadEansUnicos = uniqueEans.size;
 
-                  const oClockModel = ctx.getOwnerComponent().getModel("clock");
-                  oClockModel.setProperty("/isRunning", true);
-                  localStorage.setItem(
-                    "clockData",
-                    JSON.stringify(oClockModel.getData())
-                  );
-                  ctx.getOwnerComponent()._startClockTimer(oClockModel);
-
                   // Insertar un nuevo registro en el backend
                   var oModel = new sap.ui.model.odata.v2.ODataModel(
                     "/sap/opu/odata/sap/ZVENTILADO_SRV/",
@@ -418,6 +410,9 @@ sap.ui.define(
                     .getValue()
                     .padStart(10, "0");
 
+                  var sPtoPlanif = ctx.byId("pto_planif").getValue().trim();
+                  var sTipoLog = "INICIO";
+
                   // Primero, buscar si ya existe el registro
                   var aFilters = [
                     new sap.ui.model.Filter(
@@ -425,18 +420,18 @@ sap.ui.define(
                       sap.ui.model.FilterOperator.EQ,
                       sTransporte
                     ),
+                    new sap.ui.model.Filter(
+                      "TipoLog",
+                      sap.ui.model.FilterOperator.EQ,
+                      sTipoLog
+                    ),
                   ];
-                  oModel.read("/ZVENTILADO_KPISet", {
+                  oModel.read("/zlog_ventiladoSet", {
                     filters: aFilters,
                     success: function (oData) {
                       if (oData.results && oData.results.length === 0) {
                         // No existe, entonces hago el create
                         var now = new Date();
-                        var sODataFechaInicio = "/Date(" + now.getTime() + ")/";
-                        var sODataFechaFin =
-                          "/Date(" +
-                          new Date(1900, 0, 1, 0, 0, 0).getTime() +
-                          ")/";
 
                         // Edm.Time formato OData: PTxxHxxMxxS
                         function toODataTime(timeStr) {
@@ -451,10 +446,73 @@ sap.ui.define(
                             "S"
                           );
                         }
+                        var sODataFechaInicio = "/Date(" + now.getTime() + ")/";
+                        var sODataFechaFin =
+                          "/Date(" +
+                          new Date(1900, 0, 1, 0, 0, 0).getTime() +
+                          ")/";
                         var sHoraActual = now.toTimeString().slice(0, 8); // "HH:MM:SS"
-                        var sODataHoraInicio = toODataTime(sHoraActual);
                         var sODataHoraFin = toODataTime("00:00:00");
+                        var sODataHoraInicio = toODataTime(sHoraActual);
+                        localStorage.setItem("HoraInicio", sODataHoraInicio);
+                        var centroValue =
+                          localStorage.getItem("depositoCod") || "";
+                        var preparadorValue =
+                          localStorage.getItem("sPreparador") || "";
+                        var entregaValue =
+                          localStorage.getItem("sPtoPlanif") || "";
                         var oEntry = {
+                          Id: 0,
+                          EventoNro: 0,
+                          ScanNro: 0,
+                          Ean: "",
+                          CodigoInterno: "",
+                          Descripcion: "",
+                          Ruta: "",
+                          TipoLog: sTipoLog,
+                          Hora: sODataHoraInicio,
+                          Fecha: sODataFechaInicio,
+                          Preparador: ctx.byId("Usuario").getValue(),
+                          Cliente: "",
+                          Entrega: "",
+                          Centro: entregaValue,
+                          Preparador: preparadorValue,
+                          Estacion: ctx.byId("puesto").getValue(),
+                          Transporte: sTransporte,
+                          CantAsignada: 0,
+                          ConfirmadoEnRuta: "",
+                        };
+
+                        // Primer create: zlog_ventiladoSet
+                        var oModel2 = new sap.ui.model.odata.v2.ODataModel(
+                          "/sap/opu/odata/sap/ZVENTILADO_SRV/",
+                          {
+                            useBatch: false,
+                            defaultBindingMode: "TwoWay",
+                            deferredGroups: ["batchGroup1"],
+                          }
+                        );
+                        oModel2.create("/zlog_ventiladoSet", oEntry, {
+                          success: function (data) {
+                            ctx._validarYActualizarCronometro();
+
+                            var oClockModel = ctx
+                              .getOwnerComponent()
+                              .getModel("clock");
+                            oClockModel.setProperty("/time", "00:00:00");
+                            oClockModel.setProperty("/elapsedSeconds", 0);
+                            oClockModel.setProperty("/isRunning", false);
+                            localStorage.setItem(
+                              "clockData",
+                              JSON.stringify(oClockModel.getData())
+                            );
+                          },
+                          error: function (err) {
+                            MessageBox.error("Error al crear el evento.");
+                          },
+                        });
+
+                        var oEntryKPI = {
                           Estacion: ctx.byId("puesto").getValue(),
                           Transporte: ctx
                             .byId("reparto")
@@ -485,26 +543,135 @@ sap.ui.define(
                           Campoadicional1: "TRADICIONAL",
                         };
 
-                        oModel.create("/ZVENTILADO_KPISet", oEntry, {
+                        oModel2.create("/ZVENTILADO_KPISet", oEntryKPI, {
                           success: function (data) {
-                            //MessageToast.show("Iniciando P");
-                            // Reiniciar e iniciar el cronómetro correctamente
-                            var oClockModel = ctx
-                              .getOwnerComponent()
-                              .getModel("clock");
-                            oClockModel.setProperty("/time", "00:00:00");
-                            oClockModel.setProperty("/elapsedSeconds", 0);
-                            oClockModel.setProperty("/isRunning", true);
-                            localStorage.setItem(
-                              "clockData",
-                              JSON.stringify(oClockModel.getData())
-                            );
-                            ctx
-                              .getOwnerComponent()
-                              ._startClockTimer(oClockModel);
+                            MessageToast.show("KPI creado correctamente.");
                           },
                           error: function (err) {
                             MessageBox.error("Error al crear registro KPI.");
+                          },
+                        });
+                      } else {
+                        var oModel = new sap.ui.model.odata.v2.ODataModel(
+                          "/sap/opu/odata/sap/ZVENTILADO_SRV/",
+                          {
+                            useBatch: false,
+                            defaultBindingMode: "TwoWay",
+                            deferredGroups: ["batchGroup1"],
+                          }
+                        );
+
+                        // Crear registro BUSC.DATOS para transporte existente
+                        var now = new Date();
+                        function toODataTime(timeStr) {
+                          var parts = timeStr.split(":");
+                          return (
+                            "PT" +
+                            parts[0] +
+                            "H" +
+                            parts[1] +
+                            "M" +
+                            parts[2] +
+                            "S"
+                          );
+                        }
+                        var sODataFechaInicio = "/Date(" + now.getTime() + ")/";
+                        var sHoraActual = now.toTimeString().slice(0, 8); // "HH:MM:SS"
+                        var sODataHoraInicio = toODataTime(sHoraActual);
+                        var centroValue =
+                          localStorage.getItem("depositoCod") || "";
+                        var preparadorValue =
+                          localStorage.getItem("sPreparador") || "";
+                        var entregaValue =
+                          localStorage.getItem("sPtoPlanif") || "";
+
+                        var oEntryBuscDatos = {
+                          Id: 0,
+                          EventoNro: 0,
+                          ScanNro: 0,
+                          Ean: "",
+                          CodigoInterno: "",
+                          Descripcion: "",
+                          Ruta: "",
+                          TipoLog: "BUSC.DATOS",
+                          Hora: sODataHoraInicio,
+                          Fecha: sODataFechaInicio,
+                          Preparador: ctx.byId("Usuario").getValue(),
+                          Cliente: "",
+                          Entrega: "",
+                          Centro: entregaValue,
+                          Preparador: preparadorValue,
+                          Estacion: ctx.byId("puesto").getValue(),
+                          Transporte: sTransporte,
+                          CantAsignada: 0,
+                          ConfirmadoEnRuta: "",
+                        };
+
+                        oModel.create("/zlog_ventiladoSet", oEntryBuscDatos, {
+                          success: function (data) {
+                            // Actualizar cronómetro únicamente después de crear BUSC.DATOS exitosamente
+                            ctx._validarYActualizarCronometro();
+                          },
+                          error: function (err) {
+                            console.error(
+                              "Error al crear registro BUSC.DATOS:",
+                              err
+                            );
+                          },
+                        });
+
+                        sTipoLog = "RELOJ";
+                        var aFilters = [
+                          new sap.ui.model.Filter(
+                            "Transporte",
+                            sap.ui.model.FilterOperator.EQ,
+                            sTransporte
+                          ),
+                          new sap.ui.model.Filter(
+                            "TipoLog",
+                            sap.ui.model.FilterOperator.EQ,
+                            sTipoLog
+                          ),
+                        ];
+
+                        oModel.read("/zlog_ventiladoSet", {
+                          filters: aFilters,
+                          success: function (oData) {
+                            if (oData.results && oData.results.length > 0) {
+                              var sHoraInicioOData =
+                                localStorage.getItem("HoraInicio");
+                              if (sHoraInicioOData) {
+                                return;
+                              }
+
+                              var horaObj = oData.results[0].Reloj;
+                              var ms = horaObj && horaObj.ms ? horaObj.ms : 0;
+                              // Convert ms to HH:MM:SS
+                              var totalSeconds = Math.floor(ms / 1000);
+                              var hours = Math.floor(totalSeconds / 3600);
+                              var minutes = Math.floor(
+                                (totalSeconds % 3600) / 60
+                              );
+                              var seconds = totalSeconds % 60;
+                              var hh = String(hours).padStart(2, "0");
+                              var mm = String(minutes).padStart(2, "0");
+                              var ss = String(seconds).padStart(2, "0");
+                              var formattedTime = hh + ":" + mm + ":" + ss;
+                              // Update clock model
+                              var oClockModel = ctx
+                                .getOwnerComponent()
+                                .getModel("clock");
+                              oClockModel.setProperty("/time", formattedTime);
+                              oClockModel.setProperty(
+                                "/elapsedSeconds",
+                                totalSeconds
+                              );
+                              oClockModel.setProperty("/isRunning", true);
+                              localStorage.setItem(
+                                "clockData",
+                                JSON.stringify(oClockModel.getData())
+                              );
+                            }
                           },
                         });
                       }
@@ -590,6 +757,100 @@ sap.ui.define(
         });
       },
 
+      _validarYActualizarCronometro: function () {
+        // Obtener horainicio del localStorage
+        var sHoraInicioOData = localStorage.getItem("HoraInicio");
+
+        if (!sHoraInicioOData) {
+          return; // No hay valor guardado, no hacer nada
+        }
+
+        // Función para convertir formato OData "PTxxHxxMxxS" a segundos
+        function fromODataTimeToSeconds(oDataTime) {
+          if (!oDataTime) return 0;
+
+          var match = oDataTime.match(/PT(\d+)H(\d+)M(\d+)S/);
+          if (!match) return 0;
+
+          var hours = parseInt(match[1], 10);
+          var minutes = parseInt(match[2], 10);
+          var seconds = parseInt(match[3], 10);
+
+          return hours * 3600 + minutes * 60 + seconds;
+        }
+
+        var horaInicioEnSegundos = fromODataTimeToSeconds(sHoraInicioOData);
+
+        if (horaInicioEnSegundos > 0) {
+          // Calcular tiempo transcurrido desde la hora de inicio
+          var now = new Date();
+          var horaActualEnSegundos =
+            now.getHours() * 3600 + now.getMinutes() * 60 + now.getSeconds();
+
+          // Calcular la diferencia: hora actual - hora inicio
+          var diferenciaEnSegundos =
+            horaActualEnSegundos - horaInicioEnSegundos;
+
+          // Si la diferencia es negativa, significa que cruzamos la medianoche
+          if (diferenciaEnSegundos < 0) {
+            diferenciaEnSegundos += 24 * 3600; // Agregar 24 horas
+          }
+
+          // Convertir a formato HH:MM:SS
+          var hours = Math.floor(diferenciaEnSegundos / 3600);
+          var minutes = Math.floor((diferenciaEnSegundos % 3600) / 60);
+          var seconds = diferenciaEnSegundos % 60;
+
+          var formattedTime =
+            String(hours).padStart(2, "0") +
+            ":" +
+            String(minutes).padStart(2, "0") +
+            ":" +
+            String(seconds).padStart(2, "0");
+
+          // Actualizar el cronómetro y DETENERLO completamente
+          var oClockModel = this.getOwnerComponent().getModel("clock");
+
+          // Detener TODOS los timers posibles del cronómetro
+          var oComponent = this.getOwnerComponent();
+
+          // Intentar múltiples formas de detener el timer - INCLUIR _clockInterval que es el que realmente usa Component.js
+          if (oComponent._clockInterval) {
+            clearInterval(oComponent._clockInterval);
+            oComponent._clockInterval = null;
+          }
+
+          if (oComponent._clockTimer) {
+            clearInterval(oComponent._clockTimer);
+            oComponent._clockTimer = null;
+          }
+
+          if (oComponent.clockTimer) {
+            clearInterval(oComponent.clockTimer);
+            oComponent.clockTimer = null;
+          }
+
+          if (oComponent._timerInterval) {
+            clearInterval(oComponent._timerInterval);
+            oComponent._timerInterval = null;
+          }
+
+          // Forzar isRunning a false en el modelo
+          oClockModel.setProperty("/time", formattedTime);
+          oClockModel.setProperty("/elapsedSeconds", diferenciaEnSegundos);
+          oClockModel.setProperty("/isRunning", false); // Siempre detenido
+
+          // Forzar el refresh del modelo
+          oClockModel.refresh();
+
+          // Guardar en localStorage
+          localStorage.setItem(
+            "clockData",
+            JSON.stringify(oClockModel.getData())
+          );
+        }
+      },
+
       onAdminUnlockLog: function () {
         const oView = this.getView();
         const input = new sap.m.Input({
@@ -625,4 +886,4 @@ sap.ui.define(
       },
     });
   }
-);////
+); ////
