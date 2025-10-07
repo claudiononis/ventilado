@@ -54,9 +54,10 @@
 
                 </m:HBox>
             </m:VBox>
-
+            
             <m:HBox class="sapUiSmallMarginBottom">
                 <m:Button text="Descargar Excel" icon="sap-icon://excel-attachment" press=".onDownloadExcel"/>
+                <m:Button text="Descargar Crudo" icon="sap-icon://activity-items" press=".onDownloadExcelCrudo" class="sapUiTinyMarginBegin"/>
             </m:HBox>
 
             <!-- Tabla desktop con scrollbar vertical propio -->

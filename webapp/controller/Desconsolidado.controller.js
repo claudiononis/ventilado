@@ -366,67 +366,6 @@ sap.ui.define(
             sReparto
           ),
         ];
-        oModel.read("/ZVENTILADO_KPISet", {
-          filters: aFilters,
-          success: function (oData) {
-            if (oData.results && oData.results.length > 0) {
-              // Hay al menos un registro, actualizamos Inicioescaneo
-              var registro = oData.results[0];
-              var now = new Date();
-              var sHoraActual = now.toTimeString().slice(0, 8); // "HH:MM:SS"
-              var sODataHoraActual =
-                "PT" +
-                sHoraActual.split(":")[0] +
-                "H" +
-                sHoraActual.split(":")[1] +
-                "M" +
-                sHoraActual.split(":")[2] +
-                "S";
-
-              function parseODataDurationToMilliseconds(durationStr) {
-                if (typeof durationStr !== "string") return 0;
-                const match = durationStr.match(/PT(\d+)H(\d+)M(\d+)S/);
-                if (!match) return 0;
-                const [, h, m, s] = match.map(Number);
-                return ((h * 60 + m) * 60 + s) * 1000;
-              }
-
-              const oClockModel = ctx.getOwnerComponent().getModel("clock");
-              const tiempoReloj = oClockModel.getProperty("/time");
-              oClockModel.setProperty("/isRunning", false);
-
-              function timeStringToMinutes(timeStr) {
-                if (!timeStr) return 0;
-                const [h, m] = timeStr.split(":").map(Number);
-                return h * 60 + m;
-              }
-
-              const tiempoRelojMinutos = timeStringToMinutes(tiempoReloj);
-
-              var oUpdate = [
-                {
-                  Id: registro.Id,
-                  Iniciodesafectacion: sODataHoraActual,
-                  Duracionneta:
-                    tiempoRelojMinutos - registro.Duracionpreparacion,
-                },
-              ];
-
-              if (registro.Iniciodesafectacion.ms == "0") {
-                ctx.crud(
-                  "ACTUALIZAR",
-                  "ZVENTILADO_KPI",
-                  registro.Id,
-                  oUpdate,
-                  ""
-                );
-              }
-            }
-          },
-          error: function (oError) {
-            // No mostrar mensajes
-          },
-        });
 
         var oModel = new ODataModel("/sap/opu/odata/sap/ZVENTILADO_SRV/");
         var aFilters = [];
@@ -456,8 +395,67 @@ sap.ui.define(
                 }
               );
             } else {
-              // Si no hay registros, no se hizo desafectacion
-              console.log("No hay registros en el OData."); //No serealizo la  desafectacion
+              var dModel = new sap.ui.model.odata.v2.ODataModel(
+                "/sap/opu/odata/sap/ZVENTILADO_SRV/",
+                {
+                  useBatch: false,
+                  defaultBindingMode: "TwoWay",
+                }
+              );
+              // Crear evento de desafectacion en ZLOG_VENTILADOSet
+              var sTransporte = ctx
+                .getView()
+                .getModel()
+                .getProperty("/tableData/0/Transporte");
+              if (typeof sTransporte === "string") {
+                sTransporte = sTransporte.trim().padStart(10, "0");
+              } else {
+                sTransporte = String(sTransporte).padStart(10, "0");
+              }
+              var sTipoLog = "DESAFECTAR";
+              var now = new Date();
+              var sHoraActual = now.toTimeString().slice(0, 8); // "HH:MM:SS"
+              function toODataTime(timeStr) {
+                var parts = timeStr.split(":");
+                return "PT" + parts[0] + "H" + parts[1] + "M" + parts[2] + "S";
+              }
+              var sODataFechaInicio = "/Date(" + now.getTime() + ")/";
+              var sODataHoraInicio = toODataTime(sHoraActual);
+              var estacionValue = localStorage.getItem("sPuesto");
+              var preparadorValue = localStorage.getItem("sPreparador") || "";
+              var entregaValue = localStorage.getItem("sPtoPlanif") || "";
+              var oEntry = {
+                Id: 0,
+                EventoNro: 0,
+                ScanNro: 0,
+                Ean: "",
+                CodigoInterno: "",
+                Descripcion: "",
+                Ruta: "",
+                TipoLog: sTipoLog,
+                Hora: sODataHoraInicio,
+                Fecha: sODataFechaInicio,
+                Cliente: "",
+                Estacion: estacionValue,
+                Entrega: "",
+                Centro: entregaValue,
+                Preparador: preparadorValue,
+                Transporte: sTransporte,
+                CantAsignada: 0,
+                ConfirmadoEnRuta: "",
+              };
+
+              dModel.create("/zlog_ventiladoSet", oEntry, {
+                success: function (data) {
+                  // Actualizar cronómetro después del create exitoso de DESAFECTAR
+                  ctx._validarYActualizarCronometro();
+                },
+                error: function (err) {
+                  sap.m.MessageBox.error(
+                    "Error al crear el evento de desafectación."
+                  );
+                },
+              });
               MessageBox.warning(
                 "ATENCION! Se van a desafectar en SAP los materiales indicados para cada ENTREGA, confirma?",
                 {
@@ -493,7 +491,7 @@ sap.ui.define(
                           console.log("Estado: ", estado);
                           BusyIndicator.hide(); // Ocultar
                           MessageToast.show(
-                            "Se completo la desafectacion de material"
+                            "Se conpleto la Desafectacion de material"
                           );
                         },
                         error: function (oError) {
@@ -526,6 +524,100 @@ sap.ui.define(
         });
 
         //   }
+      },
+
+      _validarYActualizarCronometro: function () {
+        // Obtener horainicio del localStorage
+        var sHoraInicioOData = localStorage.getItem("HoraInicio");
+
+        if (!sHoraInicioOData) {
+          return; // No hay valor guardado, no hacer nada
+        }
+
+        // Función para convertir formato OData "PTxxHxxMxxS" a segundos
+        function fromODataTimeToSeconds(oDataTime) {
+          if (!oDataTime) return 0;
+
+          var match = oDataTime.match(/PT(\d+)H(\d+)M(\d+)S/);
+          if (!match) return 0;
+
+          var hours = parseInt(match[1], 10);
+          var minutes = parseInt(match[2], 10);
+          var seconds = parseInt(match[3], 10);
+
+          return hours * 3600 + minutes * 60 + seconds;
+        }
+
+        var horaInicioEnSegundos = fromODataTimeToSeconds(sHoraInicioOData);
+
+        if (horaInicioEnSegundos > 0) {
+          // Calcular tiempo transcurrido desde la hora de inicio
+          var now = new Date();
+          var horaActualEnSegundos =
+            now.getHours() * 3600 + now.getMinutes() * 60 + now.getSeconds();
+
+          // Calcular la diferencia: hora actual - hora inicio
+          var diferenciaEnSegundos =
+            horaActualEnSegundos - horaInicioEnSegundos;
+
+          // Si la diferencia es negativa, significa que cruzamos la medianoche
+          if (diferenciaEnSegundos < 0) {
+            diferenciaEnSegundos += 24 * 3600; // Agregar 24 horas
+          }
+
+          // Convertir a formato HH:MM:SS
+          var hours = Math.floor(diferenciaEnSegundos / 3600);
+          var minutes = Math.floor((diferenciaEnSegundos % 3600) / 60);
+          var seconds = diferenciaEnSegundos % 60;
+
+          var formattedTime =
+            String(hours).padStart(2, "0") +
+            ":" +
+            String(minutes).padStart(2, "0") +
+            ":" +
+            String(seconds).padStart(2, "0");
+
+          // Actualizar el cronómetro y DETENERLO completamente
+          var oClockModel = this.getOwnerComponent().getModel("clock");
+
+          // Detener TODOS los timers posibles del cronómetro
+          var oComponent = this.getOwnerComponent();
+
+          // Intentar múltiples formas de detener el timer - INCLUIR _clockInterval que es el que realmente usa Component.js
+          if (oComponent._clockInterval) {
+            clearInterval(oComponent._clockInterval);
+            oComponent._clockInterval = null;
+          }
+
+          if (oComponent._clockTimer) {
+            clearInterval(oComponent._clockTimer);
+            oComponent._clockTimer = null;
+          }
+
+          if (oComponent.clockTimer) {
+            clearInterval(oComponent.clockTimer);
+            oComponent.clockTimer = null;
+          }
+
+          if (oComponent._timerInterval) {
+            clearInterval(oComponent._timerInterval);
+            oComponent._timerInterval = null;
+          }
+
+          // Forzar isRunning a false en el modelo
+          oClockModel.setProperty("/time", formattedTime);
+          oClockModel.setProperty("/elapsedSeconds", diferenciaEnSegundos);
+          oClockModel.setProperty("/isRunning", false); // Siempre detenido
+
+          // Forzar el refresh del modelo
+          oClockModel.refresh();
+
+          // Guardar en localStorage
+          localStorage.setItem(
+            "clockData",
+            JSON.stringify(oClockModel.getData())
+          );
+        }
       },
 
       //*******  Inicio  Funciones para el CRUD del oData *******/
