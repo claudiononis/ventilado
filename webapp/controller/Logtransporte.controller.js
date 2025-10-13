@@ -304,12 +304,13 @@ sap.ui.define(
                     var p2 = function (x) {
                       return String(x).padStart(2, "0");
                     };
+                    // Usar UTC para evitar problemas de zona horaria
                     item.Fecha =
-                      p2(d.getDate()) +
+                      p2(d.getUTCDate()) +
                       "/" +
-                      p2(d.getMonth() + 1) +
+                      p2(d.getUTCMonth() + 1) +
                       "/" +
-                      d.getFullYear();
+                      d.getUTCFullYear();
                   } else {
                     item.Fecha = "";
                   }

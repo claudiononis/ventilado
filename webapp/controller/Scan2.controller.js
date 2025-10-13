@@ -44,15 +44,23 @@ sap.ui.define(
     return Controller.extend("ventilado.ventilado.controller.Scan2", {
       onInit: function () {
         this._dbConnections = []; // Array para almacenar conexiones abiertas
+        this._navegacionRegistrada = false; // Bandera para evitar registros duplicados
+
         // Obtener el router y attachRouteMatched
         var oRouter = sap.ui.core.UIComponent.getRouterFor(this);
         oRouter.getRoute("Scan").attachMatched(this.onRouteMatched, this);
 
         var oModel = new sap.ui.model.json.JSONModel();
         this.getView().setModel(oModel);
+
+        // Almacenar referencias a las funciones para poder removerlas después
+        this._boundHandleUnload = this._handleUnload.bind(this);
+        this._boundHandlePopstate = this._handlePopstate.bind(this);
+
         // Manejar eventos de navegación
-        window.addEventListener("beforeunload", this._handleUnload.bind(this));
-        window.addEventListener("popstate", this._handleUnload.bind(this));
+        window.addEventListener("beforeunload", this._boundHandleUnload);
+        window.addEventListener("popstate", this._boundHandlePopstate);
+
         // Ejecutar acciones iniciales
         this.ejecutarAcciones();
         // Obtener el valor máximo de AdicChar2
@@ -60,6 +68,10 @@ sap.ui.define(
 
       onRouteMatched: function () {
         this._dbConnections = []; // Array para almacenar conexiones abiertas
+
+        // Resetear la bandera de navegación al entrar a SCAN2
+        this._navegacionRegistrada = false;
+
         //inicializa datos
         var oModel = this.getView().getModel();
         var cantidad = this.getView().byId("txtCantidad");
@@ -683,6 +695,10 @@ sap.ui.define(
       /****** Inicio: Arranca proceso de  escaneo  ********************************************/
       onStartPress: function () {
         ctx = this;
+
+        // Quitar variable de pausa del localStorage al reanudar trabajo
+        localStorage.removeItem("pausa");
+
         //Reanuda el reloj
         const oClockModel = ctx.getOwnerComponent().getModel("clock");
         oClockModel.setProperty("/isRunning", true);
@@ -1482,6 +1498,10 @@ sap.ui.define(
         oModel.setProperty("/isArrowVisible", true);
         var descripcion = this.getView().byId("lDescripcion");
         MessageToast.show("Valor ingresado: " + sValue);
+
+        // Actualizar cronómetro después del escaneo exitoso
+        this._validarYActualizarCronometro();
+
         this.getView().setModel(oModel);
       },
 
@@ -3198,6 +3218,14 @@ sap.ui.define(
       onExit: function () {
         this.closeAllDbConnections(); // Cerrar todas las conexiones cuando se cierre el controlador
         localStorage.setItem("elapsedTime", this.elapsedTime.toString());
+
+        // Limpiar event listeners para evitar memory leaks
+        if (this._boundHandleUnload) {
+          window.removeEventListener("beforeunload", this._boundHandleUnload);
+        }
+        if (this._boundHandlePopstate) {
+          window.removeEventListener("popstate", this._boundHandlePopstate);
+        }
       },
 
       closeAllDbConnections: function () {
@@ -3210,7 +3238,20 @@ sap.ui.define(
         this.closeAllDbConnections();
         localStorage.setItem("elapsedTime", this.elapsedTime.toString());
         localStorage.setItem("elapsedTime", this.elapsedTime.toString());
+
+        if (!this._navegacionRegistrada) {
+          this._registrarEventoNavegacion();
+          this._navegacionRegistrada = true;
+        }
+
         /*         this.onPause(); */
+      },
+
+      _handlePopstate: function () {
+        if (!this._navegacionRegistrada) {
+          this._registrarEventoNavegacion();
+          this._navegacionRegistrada = true;
+        }
       },
       getFormattedDateTime: function () {
         var oDate = new Date();
@@ -3282,6 +3323,9 @@ sap.ui.define(
         if (this.intervalId) {
           clearInterval(this.intervalId);
         }
+
+        // Establecer variable de pausa en localStorage para evitar registros de navegación
+        localStorage.setItem("pausa", "true");
 
         const oClockModel = this.getOwnerComponent().getModel("clock");
         var elapsedSeconds = oClockModel.getProperty("/elapsedSeconds") || 0;
@@ -3400,27 +3444,52 @@ sap.ui.define(
       /* Navegacion   */
       onNavToInicio: function () {
         /*         this.onPause(); */
+        // Registrar navegación antes de salir (solo una vez)
+        if (!this._navegacionRegistrada) {
+          this._registrarEventoNavegacion();
+          this._navegacionRegistrada = true;
+        }
         var oRouter = sap.ui.core.UIComponent.getRouterFor(this);
         oRouter.navTo("RouteView1");
       },
       onNavToAvanceRuta: function () {
         /*         this.onPause(); */
+        // Registrar navegación antes de salir (solo una vez)
+        if (!this._navegacionRegistrada) {
+          this._registrarEventoNavegacion();
+          this._navegacionRegistrada = true;
+        }
         var oRouter = sap.ui.core.UIComponent.getRouterFor(this);
         oRouter.navTo("Avance2");
       },
       onNavToAvanceCodigo: function () {
         /*         this.onPause(); */
+        // Registrar navegación antes de salir (solo una vez)
+        if (!this._navegacionRegistrada) {
+          this._registrarEventoNavegacion();
+          this._navegacionRegistrada = true;
+        }
         var oRouter = sap.ui.core.UIComponent.getRouterFor(this);
         oRouter.navTo("Avanceporci");
       },
       onDesafectacion: function () {
         /*         this.onPause(); */
+        // Registrar navegación antes de salir (solo una vez)
+        if (!this._navegacionRegistrada) {
+          this._registrarEventoNavegacion();
+          this._navegacionRegistrada = true;
+        }
         var oRouter = sap.ui.core.UIComponent.getRouterFor(this);
         oRouter.navTo("Desconsolidado"); //
       },
 
       onNavToLog: function () {
         /*         this.onPause(); */
+        // Registrar navegación antes de salir (solo una vez)
+        if (!this._navegacionRegistrada) {
+          this._registrarEventoNavegacion();
+          this._navegacionRegistrada = true;
+        }
         var oRouter = sap.ui.core.UIComponent.getRouterFor(this);
         oRouter.navTo("Log");
       },
@@ -3515,6 +3584,81 @@ sap.ui.define(
             "clockData",
             JSON.stringify(oClockModel.getData())
           );
+        }
+      },
+
+      /**
+       * Registra un evento de navegación en zlog_ventilado cuando el usuario sale de SCAN2
+       */
+      _registrarEventoNavegacion: function () {
+        // Verificar si está en pausa - si está en pausa, no registrar navegación
+        var pausaActiva = localStorage.getItem("pausa");
+        if (pausaActiva === "true") {
+          return; // No registrar si está en pausa
+        }
+
+        try {
+          var oModel = new sap.ui.model.odata.v2.ODataModel(
+            "/sap/opu/odata/sap/ZVENTILADO_SRV/",
+            {
+              useBatch: false,
+              defaultBindingMode: "TwoWay",
+            }
+          );
+          var now = new Date();
+          var sODataFecha = "/Date(" + now.getTime() + ")/";
+
+          // Formatear hora correctamente como en otros métodos
+          var sHoraActual = now.toTimeString().slice(0, 8); // "HH:MM:SS"
+          function toODataTime(timeStr) {
+            var parts = timeStr.split(":");
+            return "PT" + parts[0] + "H" + parts[1] + "M" + parts[2] + "S";
+          }
+          var sODataHora = toODataTime(sHoraActual);
+
+          // Obtener datos del localStorage
+          var sTransporte =
+            localStorage.getItem("sReparto") ||
+            localStorage.getItem("transporte") ||
+            "";
+          var sPreparador = localStorage.getItem("sPreparador") || "";
+          var sPtoPlanif = localStorage.getItem("sPtoPlanif") || "";
+
+          // Completar transporte con ceros como en otros métodos
+          sTransporte = sTransporte.padStart(10, "0");
+
+          var oEntry = {
+            Id: 0,
+            EventoNro: 0,
+            ScanNro: 0,
+            Ean: "",
+            CodigoInterno: "",
+            Descripcion: "",
+            Ruta: "",
+            TipoLog: "NAVEGACION",
+            Hora: sODataHora,
+            Entrega: "",
+            Centro: sPtoPlanif,
+            Preparador: sPreparador,
+            Fecha: sODataFecha,
+            Cliente: "",
+            Estacion: localStorage.getItem("sPuesto") || "",
+            Transporte: sTransporte,
+            CantAsignada: 0,
+            ConfirmadoEnRuta: "",
+          };
+
+          // Crear el registro de forma asíncrona (no bloquear la navegación)
+          oModel.create("/zlog_ventiladoSet", oEntry, {
+            success: function (data) {
+              // Registro exitoso - no mostrar mensaje para no interrumpir navegación
+            },
+            error: function (err) {
+              // Error silencioso - no mostrar mensaje para no interrumpir navegación
+            },
+          });
+        } catch (e) {
+          // Error silencioso - no interrumpir la navegación del usuario
         }
       },
     });
