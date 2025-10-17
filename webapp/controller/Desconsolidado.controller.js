@@ -287,6 +287,7 @@ sap.ui.define(
             Transporte: registro.Transporte,
             Entrega: registro.Entrega,
             CantidadEntrega: registro.CantidadEntrega,
+            M3teo: registro.M3teo,
           };
         });
 
@@ -351,6 +352,38 @@ sap.ui.define(
       },
       onDesafectacionPress: function () {
         ctx = this;
+        // Primero realizar la sincronización antes de proceder con la desafectación
+        this._sincronizarAntesDeDesafectar();
+      },
+
+      _sincronizarAntesDeDesafectar: function () {
+        var that = this;
+        var oBusyDialog = new sap.m.BusyDialog({
+          title: "Sincronizando",
+          text: "Sincronizando datos con el servidor antes de proceder...",
+        });
+
+        oBusyDialog.open();
+
+        this._sincronizarBaseDatos()
+          .then(function () {
+            oBusyDialog.close();
+            // Proceder con la desafectación después de la sincronización exitosa
+            that._realizarDesafectacion();
+          })
+          .catch(function (error) {
+            oBusyDialog.close();
+            MessageBox.error(
+              "No hay conexión con el servidor, intente nuevamente.",
+              {
+                title: "Error de Conexión",
+              }
+            );
+          });
+      },
+
+      _realizarDesafectacion: function () {
+        var ctx = this;
         var oModel = new sap.ui.model.odata.v2.ODataModel(
           "/sap/opu/odata/sap/ZVENTILADO_SRV/",
           {
@@ -522,8 +555,164 @@ sap.ui.define(
             reject(oError); // Si hay un error, rechazamos la promesa
           },
         });
+      },
 
-        //   }
+      _sincronizarBaseDatos: function () {
+        var that = this;
+        return new Promise(function (resolve, reject) {
+          var oModel = new sap.ui.model.odata.v2.ODataModel(
+            "/sap/opu/odata/sap/ZVENTILADO_SRV/",
+            { useBatch: false }
+          );
+
+          // Obtener datos del servidor (ventiladoSet)
+          var aFilters = [
+            new Filter(
+              "Transporte",
+              FilterOperator.EQ,
+              localStorage.getItem("sReparto")
+            ),
+            new Filter(
+              "Entrega",
+              FilterOperator.EQ,
+              localStorage.getItem("sPtoPlanif")
+            ),
+          ];
+
+          oModel.read("/ventiladoSet", {
+            filters: aFilters,
+            success: function (oData) {
+              // Comparar y actualizar datos si es necesario
+              that
+                ._compararYActualizarDatos(oData.results)
+                .then(function () {
+                  resolve();
+                })
+                .catch(function (error) {
+                  reject(error);
+                });
+            },
+            error: function (oError) {
+              reject(new Error("Error al obtener datos del servidor"));
+            },
+          });
+        });
+      },
+
+      _compararYActualizarDatos: function (aServerData) {
+        var that = this;
+        return new Promise(function (resolve, reject) {
+          // Obtener datos locales de IndexedDB
+          that
+            .obtenerDatosDeIndexedDB()
+            .then(function (aLocalData) {
+              var updatePromises = [];
+              var hayDiferencias = false;
+              var oModel = new sap.ui.model.odata.v2.ODataModel(
+                "/sap/opu/odata/sap/ZVENTILADO_SRV/",
+                { useBatch: false }
+              );
+
+              // Crear un mapa de datos del servidor para búsqueda rápida
+              var serverDataMap = {};
+              aServerData.forEach(function (item) {
+                serverDataMap[item.Id] = item;
+              });
+
+              // Comparar cada elemento local con el servidor
+              aLocalData.forEach(function (localItem) {
+                var serverItem = serverDataMap[localItem.Id];
+                if (serverItem) {
+                  // Verificar si hay diferencias en campos críticos
+                  var needsUpdate = that._checkFieldDifferences(
+                    localItem,
+                    serverItem
+                  );
+
+                  if (needsUpdate) {
+                    hayDiferencias = true;
+                    // Actualizar el servidor con los datos locales
+                    var sPath = "/ventiladoSet(" + localItem.Id + ")";
+                    var updateData = {
+                      Id: localItem.Id,
+                      CantEscaneada: localItem.CantEscaneada,
+                      Estado: localItem.Estado,
+                      AdicChar2: localItem.AdicChar2,
+                      AdicDec2: localItem.AdicDec2,
+                      Preparador: localItem.Preparador,
+                      AdicDec1: localItem.AdicDec1,
+                      Kgbrr: localItem.Kgbrr,
+                      M3r: localItem.M3r,
+                    };
+
+                    var updatePromise = new Promise(function (
+                      resolveUpdate,
+                      rejectUpdate
+                    ) {
+                      oModel.update(sPath, updateData, {
+                        success: function () {
+                          resolveUpdate();
+                        },
+                        error: function (oError) {
+                          rejectUpdate(oError);
+                        },
+                      });
+                    });
+                    updatePromises.push(updatePromise);
+                  }
+                }
+              });
+
+              // Ejecutar todas las actualizaciones
+              if (updatePromises.length === 0) {
+                // No hay diferencias, continuar
+                resolve();
+              } else {
+                // HAY DIFERENCIAS - Intentar sincronizar
+                Promise.allSettled(updatePromises).then(function (results) {
+                  var failed = results.filter(
+                    (r) => r.status === "rejected"
+                  ).length;
+                  if (failed > 0) {
+                    // SI FALLA LA SINCRONIZACIÓN - RECHAZAR Y BLOQUEAR DESAFECTACIÓN
+                    reject(
+                      new Error(
+                        "Error en la sincronización - No se puede proceder con la desafectación"
+                      )
+                    );
+                  } else {
+                    // SINCRONIZACIÓN EXITOSA - PERMITIR DESAFECTACIÓN
+                    resolve();
+                  }
+                });
+              }
+            })
+            .catch(function (error) {
+              reject(error);
+            });
+        });
+      },
+
+      _checkFieldDifferences: function (localItem, serverItem) {
+        // Campos críticos a comparar para la sincronización
+        var criticalFields = [
+          "CantEscaneada",
+          "Estado",
+          "AdicChar2",
+          "AdicDec2",
+          "Preparador",
+          "AdicDec1",
+          "Kgbrr",
+          "M3r",
+        ];
+
+        for (var i = 0; i < criticalFields.length; i++) {
+          var field = criticalFields[i];
+          if (localItem[field] !== serverItem[field]) {
+            return true;
+          }
+        }
+        return false;
       },
 
       _validarYActualizarCronometro: function () {

@@ -2587,28 +2587,153 @@ sap.ui.define(
 
           createNext(0);
         } else if (operacion == "ACTUALIZAR") {
-          // Definir la función updateRecord
+          var MAX_REINTENTOS = 5;
+          var DELAY_REINTENTO = 2000;
 
-          var updateRecord = function (oEntry, onSuccess, onError) {
-            // La ruta debe estar construida correctamente según el modelo y los datos
+          var _mostrarReconectando = function (intento) {
+            var mensaje =
+              intento === 1
+                ? "Intentando reconectar con la base de datos..."
+                : "Reintentando conexión " + intento + " de " + MAX_REINTENTOS;
+
+            if (!ctx._dialogReconectando) {
+              ctx._dialogReconectando = new sap.m.Dialog({
+                title: "Reconectando",
+                content: [
+                  new sap.m.Text({
+                    id: "textoReconectando",
+                    text: mensaje,
+                  }),
+                  new sap.m.BusyIndicator({ visible: true }),
+                ],
+                closable: false,
+              });
+            } else {
+              // Actualizar el texto si el diálogo ya existe
+              var texto = sap.ui.getCore().byId("textoReconectando");
+              if (texto) {
+                texto.setText(mensaje);
+              }
+            }
+            ctx._dialogReconectando.open();
+          };
+
+          var _cerrarReconectando = function () {
+            if (ctx._dialogReconectando) {
+              ctx._dialogReconectando.close();
+            }
+          };
+
+          var _mostrarErrorFinal = function () {
+            MessageBox.error(
+              "No se pudieron actualizar algunos registros en la base de datos. Hay registros pendientes de actualización.",
+              {
+                title: "Error de Conexión",
+              }
+            );
+          };
+
+          var _crearEventoError = function () {
+            var oErrorModel = new sap.ui.model.odata.v2.ODataModel(
+              "/sap/opu/odata/sap/ZVENTILADO_SRV/",
+              { useBatch: false }
+            );
+
+            var now = new Date();
+            var sODataFecha = "/Date(" + now.getTime() + ")/";
+            var sHoraActual = now.toTimeString().slice(0, 8);
+            var sODataHora =
+              "PT" +
+              sHoraActual.split(":")[0] +
+              "H" +
+              sHoraActual.split(":")[1] +
+              "M" +
+              sHoraActual.split(":")[2] +
+              "S";
+
+            var sTransporte = localStorage.getItem("sReparto") || "";
+            sTransporte = sTransporte.padStart(10, "0");
+            var preparadorValue = localStorage.getItem("sPreparador") || "";
+            var entregaValue = localStorage.getItem("sPtoPlanif") || "";
+
+            var oErrorEntry = {
+              Id: 0,
+              EventoNro: 0,
+              ScanNro: 0,
+              Ean: "",
+              CodigoInterno: "",
+              Descripcion: "",
+              Ruta: "",
+              TipoLog: "ERROR",
+              Hora: sODataHora,
+              Entrega: "",
+              Centro: entregaValue,
+              Preparador: preparadorValue,
+              Fecha: sODataFecha,
+              Cliente: "",
+              Estacion: localStorage.getItem("sPuesto") || "",
+              Transporte: sTransporte,
+              CantAsignada: 0,
+              ConfirmadoEnRuta: "",
+            };
+
+            oErrorModel.create("/zlog_ventiladoSet", oErrorEntry, {
+              success: function () {},
+              error: function () {},
+            });
+          };
+
+          var _reintentarUpdate = function (
+            oEntry,
+            intento,
+            onFinalSuccess,
+            onFinalError
+          ) {
+            _mostrarReconectando(intento);
+
             var sEntitySet = "/" + tabla + "Set";
-            var sPath = sEntitySet + "(" + oEntry.Id + ")"; // Ajusta esta ruta según tu modelo OData
+            var sPath = sEntitySet + "(" + oEntry.Id + ")";
+
             oModel.update(sPath, oEntry, {
               success: function () {
-                //  MessageToast.show("Registro " + oEntry.Id + " actualizado con exito.");
-                if (onSuccess) onSuccess();
+                _cerrarReconectando();
+                if (onFinalSuccess) onFinalSuccess();
               },
               error: function (oError) {
-                MessageToast.show(
-                  "Error al actualizar el registro " + oEntry.Dni
-                );
-                console.error(oError);
-                if (onError) onError(oError);
+                if (intento < MAX_REINTENTOS) {
+                  setTimeout(function () {
+                    _reintentarUpdate(
+                      oEntry,
+                      intento + 1,
+                      onFinalSuccess,
+                      onFinalError
+                    );
+                  }, DELAY_REINTENTO);
+                } else {
+                  _cerrarReconectando();
+                  _mostrarErrorFinal();
+                  _crearEventoError();
+                  if (onFinalError) onFinalError(oError);
+                }
               },
             });
           };
 
-          // Función para actualizar los registros secuencialmente
+          // Define la función updateRecord
+          var updateRecord = function (oEntry, onSuccess, onError) {
+            var sEntitySet = "/" + tabla + "Set";
+            var sPath = sEntitySet + "(" + oEntry.Id + ")";
+            oModel.update(sPath, oEntry, {
+              success: function () {
+                if (onSuccess) onSuccess();
+              },
+              error: function (oError) {
+                _reintentarUpdate(oEntry, 1, onSuccess, onError);
+              },
+            });
+          };
+
+          // Función para actualizar los registros secuencialmente.
           var updateRecords = function (aData) {
             var updateNext = function (index) {
               if (index < aData.length) {
@@ -3218,6 +3343,12 @@ sap.ui.define(
       onExit: function () {
         this.closeAllDbConnections(); // Cerrar todas las conexiones cuando se cierre el controlador
         localStorage.setItem("elapsedTime", this.elapsedTime.toString());
+
+        // Limpiar diálogo de reconexión si existe
+        if (this._reconnectDialog) {
+          this._reconnectDialog.destroy();
+          this._reconnectDialog = null;
+        }
 
         // Limpiar event listeners para evitar memory leaks
         if (this._boundHandleUnload) {

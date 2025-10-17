@@ -87,6 +87,18 @@ sap.ui.define(
               const aData = aRaw.map((o) => {
                 aNum0.forEach((k) => (o[k] = toNumber(o[k])));
                 aNum2.forEach((k) => (o[k] = toNumber(o[k])));
+
+                // Dividir por 1000 los valores de volumen y kilo para el Excel
+                if (o.Kiloentrega !== null && o.Kiloentrega !== undefined) {
+                  o.Kiloentrega = o.Kiloentrega / 1000;
+                }
+                if (
+                  o.Volumenentrega !== null &&
+                  o.Volumenentrega !== undefined
+                ) {
+                  o.Volumenentrega = o.Volumenentrega / 1000;
+                }
+
                 o.__Fecha = fmtDate(o.Fechainicio);
                 o.__Reparto = o.Transporte || "";
                 o.__Operador = o.Operador || "";
